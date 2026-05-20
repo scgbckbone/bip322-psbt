@@ -97,6 +97,7 @@ input[readonly] {
   align-items: center;
   gap: 1rem;
   margin-top: 1.5rem;
+  flex-wrap: wrap;
 }
 
 button {
@@ -147,6 +148,8 @@ button.secondary:hover {
   font-size: 0.875rem;
   color: var(--muted);
   margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  row-gap: 0.25rem;
 }
 
 .meta strong {
@@ -270,4 +273,47 @@ footer code {
   background: var(--surface);
   padding: 1px 5px;
   border-radius: 3px;
+}
+
+@media (max-width: 600px) {
+  main {
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  header h1 {
+    font-size: 1.5rem;
+  }
+
+  textarea {
+    font-size: 0.8125rem;
+  }
+
+  .output {
+    padding: 1rem;
+  }
+
+  .qr-controls {
+    gap: 0.75rem;
+  }
+
+  .qr-format {
+    width: 100%;
+  }
+
+  button {
+    width: 100%;
+  }
+
+  button.tiny {
+    width: auto;
+  }
+
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .controls .status {
+    text-align: center;
+  }
 }
