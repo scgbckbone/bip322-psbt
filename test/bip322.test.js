@@ -51,8 +51,8 @@ describe('descriptor parser', () => {
     expect(() => parseDescriptor('')).toThrow();
   });
 
-  it('rejects missing origin', () => {
-    expect(() => parseDescriptor(`wpkh(${xpub}/0/0)`)).toThrow(/origin/i);
+  it('accepts a descriptor with origin info omitted', () => {
+    expect(() => parseDescriptor(`wpkh(${xpub}/0/0)`)).not.toThrow();
   });
 
   it('rejects wildcard child paths', () => {
@@ -77,6 +77,29 @@ describe('descriptor parser', () => {
     const r = parseDescriptor(`wpkh([deadbeef/84h/0h/0h]${xpub}/0/5)`);
     const HARDENED = 0x80000000;
     expect(r.keys[0].path).toEqual([84 | HARDENED, 0 | HARDENED, 0 | HARDENED, 0, 5]);
+  });
+
+  it('accepts a descriptor key without origin info', () => {
+    // Per BIP-32, fingerprint = hash160(pubkey)[:4]. For a master xpub the
+    // computed fp must equal what an explicit origin would carry. Use the
+    // simulator xpub (master fp = 0f056943) to lock that down.
+    const simXpub =
+      'xpub661MyMwAqRbcGC9DmWbtbAmuUjpMYxw4BWE88NSDHB3jSjfUK7KtYJuKa52GbowD3DVLkgsxH9QwPnTx5mjdHykYFEncnmAsNsCTbWzBhA7';
+    const a = buildBip322Bundle({
+      message: 'POR',
+      descriptor: `wpkh([0f056943]${simXpub}/0/0)`,
+    });
+    const b = buildBip322Bundle({
+      message: 'POR',
+      descriptor: `wpkh(${simXpub}/0/0)`,
+    });
+    expect(b.psbtBase64).toBe(a.psbtBase64);
+  });
+
+  it('accepts bare xpub with no child path (derives at xpub itself)', () => {
+    const r = parseDescriptor(`wpkh(${xpub})`);
+    expect(r.keys[0].path).toEqual([]);
+    expect(r.keys[0].fingerprint.length).toBe(4);
   });
 
   it('rejects taproot multisig (multi_a)', () => {

@@ -1,5 +1,5 @@
 import { decodeXpub, derivePath, parsePath } from './bip32.js';
-import { fromHex } from './util.js';
+import { fromHex, hash160 } from './util.js';
 
 // Returned shape:
 //   {
@@ -151,24 +151,35 @@ function parseMultiInner(inner) {
 
 function parseKeyExpression(expr) {
   let s = expr.trim();
-  if (!s.startsWith('[')) {
-    throw new Error('Key expression must start with origin info, e.g. [fp/84h/0h/0h]xpub.../0/0');
-  }
-  const end = s.indexOf(']');
-  if (end === -1) throw new Error('Missing "]" in origin info.');
 
-  const origin = s.slice(1, end);
-  const rest = s.slice(end + 1);
+  let fingerprint;
+  let originSteps;
+  let rest;
+  if (s.startsWith('[')) {
+    const end = s.indexOf(']');
+    if (end === -1) throw new Error('Missing "]" in origin info.');
+    const origin = s.slice(1, end);
+    rest = s.slice(end + 1);
 
-  const originParts = origin.split('/');
-  if (originParts.length < 1) throw new Error('Empty origin info.');
-  const fpHex = originParts[0];
-  if (!/^[0-9a-fA-F]{8}$/.test(fpHex)) {
-    throw new Error('Origin fingerprint must be 8 hex chars (4 bytes).');
+    const originParts = origin.split('/');
+    if (originParts.length < 1) throw new Error('Empty origin info.');
+    const fpHex = originParts[0];
+    if (!/^[0-9a-fA-F]{8}$/.test(fpHex)) {
+      throw new Error('Origin fingerprint must be 8 hex chars (4 bytes).');
+    }
+    fingerprint = fromHex(fpHex);
+    const originPathStr = originParts.slice(1).join('/');
+    originSteps = originPathStr ? parsePath(originPathStr) : [];
+  } else {
+    // Origin info omitted. Per BIP-32, fingerprint = hash160(pubkey)[:4].
+    // We compute it from the xpub's own pubkey, which for a master xpub
+    // matches what the explicit [origin] form would carry. For a non-master
+    // xpub it falls back to that xpub's own fingerprint — the best a signer
+    // can do without knowing the true master.
+    rest = s;
+    fingerprint = null; // computed below, after we decode the xpub
+    originSteps = [];
   }
-  const fingerprint = fromHex(fpHex);
-  const originPathStr = originParts.slice(1).join('/');
-  const originSteps = originPathStr ? parsePath(originPathStr) : [];
 
   let xpubStr;
   let childPathStr = '';
@@ -194,6 +205,9 @@ function parseKeyExpression(expr) {
   }
 
   const xpub = decodeXpub(xpubStr);
+  if (fingerprint === null) {
+    fingerprint = hash160(xpub.pubkey).slice(0, 4);
+  }
   return { fingerprint, originSteps, xpub, childSteps };
 }
 
