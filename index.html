@@ -75,6 +75,23 @@
             </button>
           </div>
           <div id="qr-body" hidden>
+            <div class="qr-controls">
+              <fieldset class="qr-format">
+                <legend>Format</legend>
+                <label>
+                  <input type="radio" name="qr-format" value="bbqr" checked />
+                  BBQr (animated)
+                </label>
+                <label>
+                  <input type="radio" name="qr-format" value="plain" />
+                  Plain QR
+                </label>
+              </fieldset>
+              <label class="qr-compress">
+                <input type="checkbox" id="qr-compress" checked />
+                Compress (BBQr only — zstd)
+              </label>
+            </div>
             <canvas id="qr"></canvas>
             <p id="qr-note" class="hint qr-note" hidden></p>
             <p id="qr-info" class="hint" hidden></p>

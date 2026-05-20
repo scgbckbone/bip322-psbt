@@ -3,12 +3,6 @@ import { splitQRs } from 'bbqr';
 import { buildBip322Bundle } from './bip322.js';
 import { spkToAddress } from './address.js';
 
-// Anything up to this many base64 chars goes into a single plain QR. v15 at
-// ECC M (77x77 modules) is robustly scannable on phone cameras and printed
-// pages. Above this, switch to animated BBQr so we don't push the QR into a
-// density that fails on poor scanners.
-const PLAIN_QR_MAX_CHARS = 400;
-
 const $ = (id) => document.getElementById(id);
 
 const els = {
@@ -31,10 +25,15 @@ const els = {
   qr: $('qr'),
   qrNote: $('qr-note'),
   qrInfo: $('qr-info'),
+  qrCompress: $('qr-compress'),
 };
 
 let bbqrTimer = null;
 let lastPsbtBytes = null;
+
+function getFormat() {
+  return document.querySelector('input[name="qr-format"]:checked')?.value ?? 'bbqr';
+}
 
 // Mainnet wpkh derived from the Coinkite simulator's known xpub. Same key
 // the test fixtures use, so the resulting PSBT is one anyone with the repo
@@ -126,28 +125,32 @@ function showQrError(msg) {
 function renderQr() {
   if (!els.psbt.value) return;
   stopBbqrAnimation();
+  if (getFormat() === 'plain') renderPlain();
+  else renderBbqr();
+}
 
-  if (els.psbt.value.length <= PLAIN_QR_MAX_CHARS) {
-    QRCode.toCanvas(
-      els.qr,
-      els.psbt.value,
-      { errorCorrectionLevel: 'M', margin: 2, scale: 6 },
-      (err) => {
-        if (err) {
-          showQrError('Failed to render QR: ' + err.message);
+function renderPlain() {
+  QRCode.toCanvas(
+    els.qr,
+    els.psbt.value,
+    { errorCorrectionLevel: 'M', margin: 2, scale: 5 },
+    (err) => {
+      if (err) {
+        if (/too big|too large|amount of data/i.test(err.message)) {
+          showQrError(
+            `Plain QR cannot hold ${els.psbt.value.length} base64 chars — switch the Format toggle above to BBQr.`,
+          );
         } else {
-          els.qr.hidden = false;
-          els.qrNote.hidden = true;
-          els.qrInfo.hidden = false;
-          els.qrInfo.textContent = `Plain QR · ${els.psbt.value.length} base64 chars`;
+          showQrError('Failed to render QR: ' + err.message);
         }
-      },
-    );
-    return;
-  }
-
-  // Too big for a comfortable plain QR — switch to BBQr animated multi-part.
-  renderBbqr();
+      } else {
+        els.qr.hidden = false;
+        els.qrNote.hidden = true;
+        els.qrInfo.hidden = false;
+        els.qrInfo.textContent = `Plain QR · ${els.psbt.value.length} base64 chars`;
+      }
+    },
+  );
 }
 
 async function renderBbqr() {
@@ -155,8 +158,10 @@ async function renderBbqr() {
     // Cap each part at QR v20 (97x97 modules, ~485 px at scale 5) so individual
     // frames stay scannable on phone cameras. splitQRs will produce more frames
     // for larger payloads rather than packing them into one massive QR.
+    // 'Z' = zstd+base32, '2' = plain base32 (no compression).
+    const requestedEncoding = els.qrCompress.checked ? 'Z' : '2';
     const { parts, encoding, version } = await splitQRs(lastPsbtBytes, 'P', {
-      encoding: 'Z',
+      encoding: requestedEncoding,
       maxVersion: 20,
     });
     if (!parts.length) {
@@ -199,6 +204,27 @@ function toggleQr() {
   if (next) renderQr();
   else stopBbqrAnimation();
 }
+
+function syncCompressEnabled() {
+  const plain = getFormat() === 'plain';
+  els.qrCompress.disabled = plain;
+  els.qrCompress.parentElement?.setAttribute('aria-disabled', String(plain));
+}
+
+function onFormatChange() {
+  syncCompressEnabled();
+  if (!els.qrBody.hidden && els.psbt.value) renderQr();
+}
+
+function onCompressChange() {
+  if (!els.qrBody.hidden && els.psbt.value && getFormat() === 'bbqr') renderQr();
+}
+
+for (const radio of document.querySelectorAll('input[name="qr-format"]')) {
+  radio.addEventListener('change', onFormatChange);
+}
+els.qrCompress.addEventListener('change', onCompressChange);
+syncCompressEnabled();
 
 els.build.addEventListener('click', build);
 els.example.addEventListener('click', loadExample);

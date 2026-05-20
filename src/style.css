@@ -190,6 +190,44 @@ button.tiny {
   margin-top: 0.75rem;
 }
 
+.qr-controls {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.qr-format {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.375rem 0.75rem;
+  margin: 0;
+  display: inline-flex;
+  gap: 0.875rem;
+}
+
+.qr-format legend {
+  padding: 0 0.375rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.qr-format label,
+.qr-compress {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.qr-compress[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 #qr {
   display: block;
   background: #fff;
