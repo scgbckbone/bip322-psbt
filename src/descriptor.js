@@ -26,8 +26,8 @@ export function parseDescriptor(input) {
   if (!s.endsWith(')')) throw new Error('Descriptor must end with ")".');
 
   // sh(wsh(multi/sortedmulti(...)))
-  if (s.startsWith('sh(wsh(') && s.endsWith(')))')) {
-    const inner = s.slice('sh(wsh('.length, -3);
+  if (s.startsWith('sh(wsh(') && s.endsWith('))')) {
+    const inner = s.slice('sh(wsh('.length, -2);
     const m = parseMultiInner(inner);
     return finishMulti('sh-wsh-multi', m);
   }
