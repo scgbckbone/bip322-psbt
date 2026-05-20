@@ -66,6 +66,23 @@
         <label for="psbt">PSBT (base64)</label>
         <textarea id="psbt" rows="10" readonly></textarea>
         <button id="copy" type="button">Copy</button>
+
+        <div class="qr-block">
+          <div class="qr-header">
+            <label for="qr">QR code</label>
+            <button id="toggle-qr" type="button" class="secondary tiny" aria-expanded="false">
+              Show
+            </button>
+          </div>
+          <div id="qr-body" hidden>
+            <canvas id="qr"></canvas>
+            <p id="qr-note" class="hint qr-note" hidden></p>
+            <p class="hint">
+              Plain base64 QR. Coldcard / Sparrow / Passport / Keystone do not natively scan
+              this format — use the Copy button + paste for those.
+            </p>
+          </div>
+        </div>
       </section>
 
       <section class="error" id="error" role="alert" aria-live="assertive" hidden></section>

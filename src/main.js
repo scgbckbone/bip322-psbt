@@ -1,3 +1,4 @@
+import QRCode from 'qrcode';
 import { buildBip322Bundle } from './bip322.js';
 import { spkToAddress } from './address.js';
 
@@ -18,6 +19,10 @@ const els = {
   output: $('output'),
   status: $('status'),
   error: $('error'),
+  toggleQr: $('toggle-qr'),
+  qrBody: $('qr-body'),
+  qr: $('qr'),
+  qrNote: $('qr-note'),
 };
 
 // Mainnet wpkh derived from the Coinkite simulator's known xpub. Same key
@@ -63,6 +68,9 @@ function build() {
     els.address.value = spkToAddress(r.scriptPubKey, r.network) ?? '(unknown)';
     els.output.hidden = false;
     els.status.textContent = '';
+    if (els.toggleQr.getAttribute('aria-expanded') === 'true') {
+      renderQr();
+    }
   } catch (e) {
     showError(e.message || String(e));
   }
@@ -88,9 +96,39 @@ async function copy() {
   }
 }
 
+function renderQr() {
+  if (!els.psbt.value) return;
+  QRCode.toCanvas(
+    els.qr,
+    els.psbt.value,
+    { errorCorrectionLevel: 'L', margin: 0, scale: 4 },
+    (err) => {
+      if (err) {
+        els.qr.hidden = true;
+        els.qrNote.hidden = false;
+        els.qrNote.textContent =
+          'PSBT is too large for a single plain QR code. Larger multisig PSBTs would need BBQr or UR (animated multi-part QR) to fit.';
+      } else {
+        els.qr.hidden = false;
+        els.qrNote.hidden = true;
+      }
+    },
+  );
+}
+
+function toggleQr() {
+  const expanded = els.toggleQr.getAttribute('aria-expanded') === 'true';
+  const next = !expanded;
+  els.toggleQr.setAttribute('aria-expanded', String(next));
+  els.toggleQr.textContent = next ? 'Hide' : 'Show';
+  els.qrBody.hidden = !next;
+  if (next) renderQr();
+}
+
 els.build.addEventListener('click', build);
 els.example.addEventListener('click', loadExample);
 els.copy.addEventListener('click', copy);
+els.toggleQr.addEventListener('click', toggleQr);
 
 for (const t of [els.message, els.descriptor]) {
   t.addEventListener('keydown', (e) => {
