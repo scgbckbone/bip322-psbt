@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BIP-322 PSBT Builder</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>BIP-322 PSBT Builder</h1>
+        <p class="lede">
+          Construct an unsigned BIP-322 PSBT for a hardware wallet to sign. Runs entirely in
+          your browser — no keys leave this page, nothing is sent to a server.
+        </p>
+      </header>
+
+      <section class="form">
+        <label for="message">Message</label>
+        <textarea
+          id="message"
+          rows="3"
+          placeholder="The message you want the hardware wallet to prove it signed."
+        >POR</textarea>
+
+        <label for="descriptor">Output descriptor</label>
+        <textarea
+          id="descriptor"
+          rows="4"
+          spellcheck="false"
+          placeholder="wpkh([d34db33f/84h/0h/0h]xpub6.../0/0)"
+        ></textarea>
+        <p class="hint">
+          Supported: <code>pkh(...)</code>, <code>wpkh(...)</code>,
+          <code>sh(wpkh(...))</code>, <code>tr(...)</code>. The key must include origin info
+          and a concrete child index — no <code>/*</code> wildcards. Optional
+          <code>#checksum</code> suffix is accepted (not validated).
+        </p>
+
+        <div class="controls">
+          <button id="build" type="button">Build PSBT</button>
+          <span id="status" class="status"></span>
+        </div>
+      </section>
+
+      <section class="output" id="output" hidden>
+        <div class="meta">
+          <span>Network: <strong id="network"></strong></span>
+          <span>Type: <strong id="type"></strong></span>
+        </div>
+
+        <label for="psbt">PSBT (base64)</label>
+        <textarea id="psbt" rows="10" readonly></textarea>
+        <button id="copy" type="button">Copy</button>
+      </section>
+
+      <section class="error" id="error" hidden></section>
+
+      <footer>
+        <p>
+          Open source — view <a id="repo-link" href="#">source on GitHub</a>. Reference
+          implementation: Coinkite's
+          <code>afirmware/testing/bip322.py</code>. PSBT bytes match it exactly.
+        </p>
+      </footer>
+    </main>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
