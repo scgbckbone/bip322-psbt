@@ -1,6 +1,13 @@
 import QRCode from 'qrcode';
+import { splitQRs } from 'bbqr';
 import { buildBip322Bundle } from './bip322.js';
 import { spkToAddress } from './address.js';
+
+// Anything up to this many base64 chars goes into a single plain QR. v15 at
+// ECC M (77x77 modules) is robustly scannable on phone cameras and printed
+// pages. Above this, switch to animated BBQr so we don't push the QR into a
+// density that fails on poor scanners.
+const PLAIN_QR_MAX_CHARS = 400;
 
 const $ = (id) => document.getElementById(id);
 
@@ -23,7 +30,11 @@ const els = {
   qrBody: $('qr-body'),
   qr: $('qr'),
   qrNote: $('qr-note'),
+  qrInfo: $('qr-info'),
 };
+
+let bbqrTimer = null;
+let lastPsbtBytes = null;
 
 // Mainnet wpkh derived from the Coinkite simulator's known xpub. Same key
 // the test fixtures use, so the resulting PSBT is one anyone with the repo
@@ -56,6 +67,7 @@ function build() {
   }
   try {
     const r = buildBip322Bundle({ message, descriptor });
+    lastPsbtBytes = r.psbtBytes;
     els.psbt.value = r.psbtBase64;
     els.network.textContent = r.network;
     els.type.textContent = r.type + (r.sorted ? ' (sortedmulti)' : r.m ? ' (multi)' : '');
@@ -96,24 +108,83 @@ async function copy() {
   }
 }
 
+function stopBbqrAnimation() {
+  if (bbqrTimer !== null) {
+    clearInterval(bbqrTimer);
+    bbqrTimer = null;
+  }
+}
+
+function showQrError(msg) {
+  stopBbqrAnimation();
+  els.qr.hidden = true;
+  els.qrInfo.hidden = true;
+  els.qrNote.hidden = false;
+  els.qrNote.textContent = msg;
+}
+
 function renderQr() {
   if (!els.psbt.value) return;
-  QRCode.toCanvas(
-    els.qr,
-    els.psbt.value,
-    { errorCorrectionLevel: 'L', margin: 0, scale: 4 },
-    (err) => {
-      if (err) {
-        els.qr.hidden = true;
-        els.qrNote.hidden = false;
-        els.qrNote.textContent =
-          'PSBT is too large for a single QR code — copy the base64 instead.';
-      } else {
-        els.qr.hidden = false;
-        els.qrNote.hidden = true;
-      }
-    },
-  );
+  stopBbqrAnimation();
+
+  if (els.psbt.value.length <= PLAIN_QR_MAX_CHARS) {
+    QRCode.toCanvas(
+      els.qr,
+      els.psbt.value,
+      { errorCorrectionLevel: 'M', margin: 2, scale: 6 },
+      (err) => {
+        if (err) {
+          showQrError('Failed to render QR: ' + err.message);
+        } else {
+          els.qr.hidden = false;
+          els.qrNote.hidden = true;
+          els.qrInfo.hidden = false;
+          els.qrInfo.textContent = `Plain QR · ${els.psbt.value.length} base64 chars`;
+        }
+      },
+    );
+    return;
+  }
+
+  // Too big for a comfortable plain QR — switch to BBQr animated multi-part.
+  renderBbqr();
+}
+
+async function renderBbqr() {
+  try {
+    const { parts, encoding } = await splitQRs(lastPsbtBytes, 'P', { encoding: 'Z' });
+    if (!parts.length) {
+      showQrError('BBQr produced no parts (unexpected).');
+      return;
+    }
+    let idx = 0;
+    const draw = () => {
+      QRCode.toCanvas(
+        els.qr,
+        parts[idx],
+        { errorCorrectionLevel: 'M', margin: 2, scale: 6 },
+        (err) => {
+          if (err) {
+            showQrError('BBQr part failed to render: ' + err.message);
+          }
+        },
+      );
+      els.qrInfo.textContent =
+        parts.length === 1
+          ? `BBQr (encoding ${encoding}) · single frame`
+          : `BBQr (encoding ${encoding}) · frame ${idx + 1} / ${parts.length}`;
+      idx = (idx + 1) % parts.length;
+    };
+    draw();
+    els.qr.hidden = false;
+    els.qrNote.hidden = true;
+    els.qrInfo.hidden = false;
+    if (parts.length > 1) {
+      bbqrTimer = setInterval(draw, 500);
+    }
+  } catch (e) {
+    showQrError('Failed to build BBQr: ' + (e.message || String(e)));
+  }
 }
 
 function toggleQr() {
@@ -123,6 +194,7 @@ function toggleQr() {
   els.toggleQr.textContent = next ? 'Hide' : 'Show';
   els.qrBody.hidden = !next;
   if (next) renderQr();
+  else stopBbqrAnimation();
 }
 
 els.build.addEventListener('click', build);
