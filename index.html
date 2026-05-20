@@ -40,7 +40,8 @@
 
         <div class="controls">
           <button id="build" type="button">Build PSBT</button>
-          <span id="status" class="status"></span>
+          <button id="example" type="button" class="secondary">Load example</button>
+          <span id="status" class="status" role="status" aria-live="polite"></span>
         </div>
       </section>
 
@@ -50,17 +51,25 @@
           <span>Type: <strong id="type"></strong></span>
         </div>
 
+        <label for="address">Address being proved</label>
+        <input id="address" readonly />
+        <p class="hint">
+          Double-check this is the wallet you meant — a typo in the descriptor produces a
+          valid-but-wrong PSBT.
+        </p>
+
         <label for="psbt">PSBT (base64)</label>
         <textarea id="psbt" rows="10" readonly></textarea>
         <button id="copy" type="button">Copy</button>
       </section>
 
-      <section class="error" id="error" hidden></section>
+      <section class="error" id="error" role="alert" aria-live="assertive" hidden></section>
 
       <footer>
         <p>
-          Open source — view <a id="repo-link" href="#">source on GitHub</a>. Reference
-          implementation: Coinkite's
+          Open source —
+          <a id="repo-link" href="https://github.com/scgbckbone/bip322-psbt"
+            >source on GitHub</a>. Reference implementation: Coinkite's
           <code>afirmware/testing/bip322.py</code>. PSBT bytes match it exactly.
         </p>
       </footer>

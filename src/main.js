@@ -1,4 +1,5 @@
 import { buildBip322Bundle } from './bip322.js';
+import { spkToAddress } from './address.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -6,13 +7,24 @@ const els = {
   message: $('message'),
   descriptor: $('descriptor'),
   build: $('build'),
+  example: $('example'),
   copy: $('copy'),
   psbt: $('psbt'),
   network: $('network'),
   type: $('type'),
+  address: $('address'),
   output: $('output'),
   status: $('status'),
   error: $('error'),
+};
+
+// Mainnet wpkh derived from the Coinkite simulator's known xpub. Same key
+// the test fixtures use, so the resulting PSBT is one anyone with the repo
+// can reproduce locally.
+const EXAMPLE = {
+  message: 'POR',
+  descriptor:
+    'wpkh([0f056943]xpub661MyMwAqRbcGC9DmWbtbAmuUjpMYxw4BWE88NSDHB3jSjfUK7KtYJuKa52GbowD3DVLkgsxH9QwPnTx5mjdHykYFEncnmAsNsCTbWzBhA7/0/0)',
 };
 
 function showError(msg) {
@@ -40,11 +52,18 @@ function build() {
     els.psbt.value = r.psbtBase64;
     els.network.textContent = r.network;
     els.type.textContent = r.type;
+    els.address.value = spkToAddress(r.scriptPubKey, r.network) ?? '(unknown)';
     els.output.hidden = false;
     els.status.textContent = '';
   } catch (e) {
     showError(e.message || String(e));
   }
+}
+
+function loadExample() {
+  els.message.value = EXAMPLE.message;
+  els.descriptor.value = EXAMPLE.descriptor;
+  build();
 }
 
 async function copy() {
@@ -62,9 +81,9 @@ async function copy() {
 }
 
 els.build.addEventListener('click', build);
+els.example.addEventListener('click', loadExample);
 els.copy.addEventListener('click', copy);
 
-// Submit on Cmd/Ctrl+Enter from either textarea.
 for (const t of [els.message, els.descriptor]) {
   t.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {

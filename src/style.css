@@ -53,7 +53,9 @@ label {
   color: var(--text);
 }
 
-textarea {
+textarea,
+input[type='text'],
+input:not([type]) {
   width: 100%;
   resize: vertical;
   font-family: var(--mono);
@@ -66,11 +68,13 @@ textarea {
   outline: none;
 }
 
-textarea:focus {
+textarea:focus,
+input:focus {
   border-color: var(--accent);
 }
 
-textarea[readonly] {
+textarea[readonly],
+input[readonly] {
   background: var(--surface-2);
   cursor: text;
 }
@@ -112,6 +116,16 @@ button:hover {
 
 button:active {
   transform: translateY(1px);
+}
+
+button.secondary {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+button.secondary:hover {
+  background: var(--border);
 }
 
 .status {
