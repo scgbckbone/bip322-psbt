@@ -144,6 +144,57 @@ button.secondary:hover {
   background: var(--border);
 }
 
+.label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.label-row label {
+  margin-top: 1.25rem;
+}
+
+.scan-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 100;
+}
+
+.scan-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  max-width: 480px;
+  width: 100%;
+}
+
+.scan-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+#scan-video {
+  width: 100%;
+  max-height: 60vh;
+  background: #000;
+  border-radius: 6px;
+  display: block;
+}
+
+.scan-status {
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
 .status {
   color: var(--ok);
   font-size: 0.875rem;

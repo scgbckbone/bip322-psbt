@@ -49,7 +49,10 @@
           placeholder="The message you want the hardware wallet to prove it signed."
         >POR</textarea>
 
-        <label for="descriptor">Output descriptor</label>
+        <div class="label-row">
+          <label for="descriptor">Output descriptor</label>
+          <button id="scan" type="button" class="secondary tiny">Scan QR</button>
+        </div>
         <textarea
           id="descriptor"
           rows="4"
@@ -154,6 +157,23 @@
         </p>
       </footer>
     </main>
+
+    <div id="scan-modal" class="scan-modal" hidden role="dialog" aria-modal="true" aria-label="QR scanner">
+      <div class="scan-box">
+        <div class="scan-header">
+          <strong>Scan a QR</strong>
+          <button id="scan-close" type="button" class="secondary tiny">Close</button>
+        </div>
+        <video id="scan-video" playsinline muted></video>
+        <p id="scan-status" class="hint scan-status">Requesting camera…</p>
+        <p class="hint">
+          Point at a Coldcard <em>Key Expression</em> QR (BIP-380 form,
+          <code>[xfp/path]xpub</code>). The page wraps it in <code>wpkh(...)</code> by
+          default — change the script type or add a child path in the textarea afterward
+          if needed.
+        </p>
+      </div>
+    </div>
 
     <script type="module" src="./src/main.js"></script>
   </body>

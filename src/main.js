@@ -27,6 +27,11 @@ const els = {
   qrNote: $('qr-note'),
   qrInfo: $('qr-info'),
   qrCompress: $('qr-compress'),
+  scan: $('scan'),
+  scanModal: $('scan-modal'),
+  scanClose: $('scan-close'),
+  scanVideo: $('scan-video'),
+  scanStatus: $('scan-status'),
 };
 
 let bbqrTimer = null;
@@ -282,6 +287,102 @@ for (const radio of document.querySelectorAll('input[name="utxo-format"]')) {
     if (els.descriptor.value.trim() && !els.output.hidden) build(false);
   });
 }
+
+// --- QR scanner (webcam, single-shot) ---
+// jsQR is loaded on demand so the initial bundle stays small for users who
+// never click 'Scan QR'.
+
+let scanStream = null;
+let scanCanvas = null;
+let scanRafId = null;
+let jsQR = null;
+
+async function openScan() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    showError(
+      'Camera access not supported in this browser. Paste the descriptor manually.',
+    );
+    return;
+  }
+  els.scanModal.hidden = false;
+  els.scanStatus.textContent = 'Loading decoder…';
+  if (!jsQR) {
+    try {
+      ({ default: jsQR } = await import('jsqr'));
+    } catch (e) {
+      els.scanStatus.textContent = 'Failed to load QR decoder: ' + (e?.message || e);
+      return;
+    }
+  }
+  els.scanStatus.textContent = 'Requesting camera…';
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },
+      audio: false,
+    });
+  } catch (e) {
+    els.scanStatus.textContent =
+      e?.name === 'NotAllowedError'
+        ? 'Camera permission denied. Paste the descriptor manually.'
+        : 'Could not open camera: ' + (e?.message || e);
+    return;
+  }
+  els.scanVideo.srcObject = scanStream;
+  await els.scanVideo.play();
+  els.scanStatus.textContent = 'Scanning… point at a QR code.';
+  scanCanvas = scanCanvas || document.createElement('canvas');
+  tick();
+}
+
+function tick() {
+  const v = els.scanVideo;
+  if (!v.videoWidth) {
+    scanRafId = requestAnimationFrame(tick);
+    return;
+  }
+  scanCanvas.width = v.videoWidth;
+  scanCanvas.height = v.videoHeight;
+  const ctx = scanCanvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(v, 0, 0, scanCanvas.width, scanCanvas.height);
+  const img = ctx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+  const result = jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' });
+  if (result?.data) {
+    onScanDecoded(result.data);
+    return;
+  }
+  scanRafId = requestAnimationFrame(tick);
+}
+
+function onScanDecoded(text) {
+  closeScan();
+  // Coldcard's "Key Expression" QR is the BIP-380 inner expression:
+  // [xfp/path]xpub  (no script-type wrapper, no /chain/index suffix).
+  // Auto-wrap bare key expressions in wpkh(...) as the most common case;
+  // leave anything that already looks like a full descriptor untouched.
+  let value = text.trim();
+  if (/^\[[0-9a-fA-F]{8}/.test(value) && /xpub|tpub|ypub|upub|zpub|vpub/.test(value)) {
+    value = `wpkh(${value})`;
+  }
+  els.descriptor.value = value;
+  els.descriptor.focus();
+}
+
+function closeScan() {
+  if (scanRafId !== null) cancelAnimationFrame(scanRafId);
+  scanRafId = null;
+  if (scanStream) {
+    for (const t of scanStream.getTracks()) t.stop();
+    scanStream = null;
+  }
+  els.scanVideo.srcObject = null;
+  els.scanModal.hidden = true;
+}
+
+els.scan.addEventListener('click', openScan);
+els.scanClose.addEventListener('click', closeScan);
+els.scanModal.addEventListener('click', (e) => {
+  if (e.target === els.scanModal) closeScan();
+});
 
 els.build.addEventListener('click', () => build(true));
 els.example.addEventListener('click', loadExample);
