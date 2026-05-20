@@ -11,6 +11,7 @@ const els = {
   build: $('build'),
   example: $('example'),
   copy: $('copy'),
+  download: $('download'),
   psbt: $('psbt'),
   network: $('network'),
   type: $('type'),
@@ -105,6 +106,35 @@ async function copy() {
     els.status.textContent = 'Copied.';
     setTimeout(() => (els.status.textContent = ''), 1500);
   }
+}
+
+function download() {
+  if (!lastPsbtBytes) return;
+  const blob = new Blob([lastPsbtBytes], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `bip322-${stamp()}.psbt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  els.status.textContent = `Saved ${a.download}`;
+  setTimeout(() => (els.status.textContent = ''), 1800);
+}
+
+function stamp() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return (
+    d.getFullYear().toString() +
+    pad(d.getMonth() + 1) +
+    pad(d.getDate()) +
+    'T' +
+    pad(d.getHours()) +
+    pad(d.getMinutes()) +
+    pad(d.getSeconds())
+  );
 }
 
 function stopBbqrAnimation() {
@@ -229,6 +259,7 @@ syncCompressEnabled();
 els.build.addEventListener('click', build);
 els.example.addEventListener('click', loadExample);
 els.copy.addEventListener('click', copy);
+els.download.addEventListener('click', download);
 els.toggleQr.addEventListener('click', toggleQr);
 
 for (const t of [els.message, els.descriptor]) {

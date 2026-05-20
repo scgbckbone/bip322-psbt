@@ -158,14 +158,20 @@ button.secondary:hover {
   font-weight: 500;
 }
 
-.output > button {
+.output-actions {
+  display: flex;
+  gap: 0.5rem;
   margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.output-actions button {
   background: var(--surface-2);
   color: var(--text);
   border: 1px solid var(--border);
 }
 
-.output > button:hover {
+.output-actions button:hover {
   background: var(--border);
 }
 

@@ -77,7 +77,10 @@
 
         <label for="psbt">PSBT (base64)</label>
         <textarea id="psbt" rows="10" readonly></textarea>
-        <button id="copy" type="button">Copy</button>
+        <div class="output-actions">
+          <button id="copy" type="button">Copy</button>
+          <button id="download" type="button">Download .psbt</button>
+        </div>
 
         <div class="qr-block">
           <div class="qr-header">
