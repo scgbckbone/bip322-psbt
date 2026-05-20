@@ -76,6 +76,22 @@ function clearError() {
 // parsed script, then sync the radio to whatever was used. After the first
 // Build, subsequent clicks honor whatever the radio currently shows so the
 // user's manual choice sticks.
+// When the user edits the inputs after a Build, the on-screen output (PSBT,
+// address, QR, Copy/Download targets) no longer matches what's in the form.
+// Hiding the output panel and clearing lastPsbtBytes prevents stale data
+// from being copied / downloaded / scanned silently.
+function invalidateOutput() {
+  if (!els.output.hidden) {
+    els.output.hidden = true;
+    els.psbt.value = '';
+    lastPsbtBytes = null;
+    stopBbqrAnimation();
+    els.toggleQr.setAttribute('aria-expanded', 'false');
+    els.toggleQr.textContent = 'Show';
+    els.qrBody.hidden = true;
+  }
+}
+
 function build(auto = true) {
   clearError();
   const message = els.message.value;
@@ -397,4 +413,5 @@ for (const t of [els.message, els.descriptor]) {
       build();
     }
   });
+  t.addEventListener('input', invalidateOutput);
 }
