@@ -152,8 +152,12 @@ function renderQr() {
 
 async function renderBbqr() {
   try {
+    // Cap each part at QR v20 (97x97 modules, ~485 px at scale 5) so individual
+    // frames stay scannable on phone cameras. splitQRs will produce more frames
+    // for larger payloads rather than packing them into one massive QR.
     const { parts, encoding, version } = await splitQRs(lastPsbtBytes, 'P', {
       encoding: 'Z',
+      maxVersion: 20,
     });
     if (!parts.length) {
       showQrError('BBQr produced no parts (unexpected).');
@@ -162,7 +166,7 @@ async function renderBbqr() {
     // splitQRs picks part sizes assuming ECC L (the densest mode). Render at
     // the version it planned for; pinning both keeps every frame the same
     // physical size so the animation doesn't jump.
-    const opts = { errorCorrectionLevel: 'L', version, margin: 2, scale: 6 };
+    const opts = { errorCorrectionLevel: 'L', version, margin: 2, scale: 5 };
     let idx = 0;
     const draw = () => {
       QRCode.toCanvas(els.qr, parts[idx], opts, (err) => {
