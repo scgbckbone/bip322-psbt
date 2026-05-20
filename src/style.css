@@ -208,7 +208,8 @@ button.tiny {
   font-size: 0.875rem;
 }
 
-.qr-format {
+.qr-format,
+.utxo-format {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.375rem 0.75rem;
@@ -217,13 +218,19 @@ button.tiny {
   gap: 0.875rem;
 }
 
-.qr-format legend {
+.utxo-format {
+  margin-top: 0.5rem;
+}
+
+.qr-format legend,
+.utxo-format legend {
   padding: 0 0.375rem;
   color: var(--muted);
   font-size: 0.75rem;
 }
 
 .qr-format label,
+.utxo-format label,
 .qr-compress {
   display: inline-flex;
   align-items: center;

@@ -36,6 +36,15 @@ function getFormat() {
   return document.querySelector('input[name="qr-format"]:checked')?.value ?? 'bbqr';
 }
 
+function getUtxoChoice() {
+  return document.querySelector('input[name="utxo-format"]:checked')?.value ?? 'witness';
+}
+
+function setUtxoChoice(value) {
+  const radio = document.querySelector(`input[name="utxo-format"][value="${value}"]`);
+  if (radio) radio.checked = true;
+}
+
 // Mainnet wpkh keyed off the same xpub the test fixtures use, so the
 // resulting PSBT is one anyone with the repo can reproduce locally.
 const EXAMPLE = {
@@ -56,7 +65,11 @@ function clearError() {
   els.error.textContent = '';
 }
 
-function build() {
+// `auto` means: let buildBip322Bundle pick the appropriate utxo type for the
+// parsed script, then sync the radio to whatever was used. After the first
+// Build, subsequent clicks honor whatever the radio currently shows so the
+// user's manual choice sticks.
+function build(auto = true) {
   clearError();
   const message = els.message.value;
   const descriptor = els.descriptor.value.trim();
@@ -65,7 +78,11 @@ function build() {
     return;
   }
   try {
-    const r = buildBip322Bundle({ message, descriptor });
+    const r = buildBip322Bundle({
+      message,
+      descriptor,
+      utxoType: auto ? undefined : getUtxoChoice(),
+    });
     lastPsbtBytes = r.psbtBytes;
     els.psbt.value = r.psbtBase64;
     els.network.textContent = r.network;
@@ -77,6 +94,7 @@ function build() {
       els.quorumWrap.hidden = true;
     }
     els.address.value = spkToAddress(r.scriptPubKey, r.network) ?? '(unknown)';
+    setUtxoChoice(r.utxoType);
     els.output.hidden = false;
     els.status.textContent = '';
     if (els.toggleQr.getAttribute('aria-expanded') === 'true') {
@@ -255,7 +273,15 @@ for (const radio of document.querySelectorAll('input[name="qr-format"]')) {
 els.qrCompress.addEventListener('change', onCompressChange);
 syncCompressEnabled();
 
-els.build.addEventListener('click', build);
+// Changing the utxo radio after a Build re-runs the build using the user's
+// explicit choice — preserves Copy/Download targets in lockstep with the QR.
+for (const radio of document.querySelectorAll('input[name="utxo-format"]')) {
+  radio.addEventListener('change', () => {
+    if (els.descriptor.value.trim() && !els.output.hidden) build(false);
+  });
+}
+
+els.build.addEventListener('click', () => build(true));
 els.example.addEventListener('click', loadExample);
 els.copy.addEventListener('click', copy);
 els.download.addEventListener('click', download);

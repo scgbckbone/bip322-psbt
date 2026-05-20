@@ -75,6 +75,22 @@
           valid-but-wrong PSBT.
         </p>
 
+        <fieldset class="utxo-format">
+          <legend>UTXO field</legend>
+          <label>
+            <input type="radio" name="utxo-format" value="non_witness" />
+            utxo
+          </label>
+          <label>
+            <input type="radio" name="utxo-format" value="witness" checked />
+            wutxo
+          </label>
+        </fieldset>
+        <p class="hint">
+          Defaults to the BIP-174-appropriate field for the script type
+          (<code>utxo</code> for legacy / bare P2SH, <code>wutxo</code> for everything else).
+        </p>
+
         <label for="psbt">PSBT (base64)</label>
         <textarea id="psbt" rows="10" readonly></textarea>
         <div class="output-actions">
