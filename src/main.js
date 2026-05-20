@@ -152,27 +152,26 @@ function renderQr() {
 
 async function renderBbqr() {
   try {
-    const { parts, encoding } = await splitQRs(lastPsbtBytes, 'P', { encoding: 'Z' });
+    const { parts, encoding, version } = await splitQRs(lastPsbtBytes, 'P', {
+      encoding: 'Z',
+    });
     if (!parts.length) {
       showQrError('BBQr produced no parts (unexpected).');
       return;
     }
+    // splitQRs picks part sizes assuming ECC L (the densest mode). Render at
+    // the version it planned for; pinning both keeps every frame the same
+    // physical size so the animation doesn't jump.
+    const opts = { errorCorrectionLevel: 'L', version, margin: 2, scale: 6 };
     let idx = 0;
     const draw = () => {
-      QRCode.toCanvas(
-        els.qr,
-        parts[idx],
-        { errorCorrectionLevel: 'M', margin: 2, scale: 6 },
-        (err) => {
-          if (err) {
-            showQrError('BBQr part failed to render: ' + err.message);
-          }
-        },
-      );
+      QRCode.toCanvas(els.qr, parts[idx], opts, (err) => {
+        if (err) showQrError('BBQr part failed to render: ' + err.message);
+      });
       els.qrInfo.textContent =
         parts.length === 1
-          ? `BBQr (encoding ${encoding}) · single frame`
-          : `BBQr (encoding ${encoding}) · frame ${idx + 1} / ${parts.length}`;
+          ? `BBQr (encoding ${encoding}, v${version}) · single frame`
+          : `BBQr (encoding ${encoding}, v${version}) · frame ${idx + 1} / ${parts.length}`;
       idx = (idx + 1) % parts.length;
     };
     draw();
