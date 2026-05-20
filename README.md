@@ -10,15 +10,19 @@ Nothing leaves the page — no keys are ever entered (the tool only needs the
 ## Supported
 
 - Single-sig descriptors: `pkh(...)`, `wpkh(...)`, `sh(wpkh(...))`, `tr(...)` (BIP-86 key-path, no script tree)
+- Non-taproot multisig: `sh(multi(...))`, `wsh(multi(...))`, `sh(wsh(multi(...)))` and the `sortedmulti` (BIP-67) equivalents
 - Networks: **mainnet** and **testnet** (auto-detected from the xpub version bytes)
 - Output: PSBT v0 as base64
 
-## Out of scope (v1)
+## Out of scope
 
-Multisig, multi-input proof-of-reserves, PSBT v2, QR / file output, sighash
-overrides, signing in the browser, wallet connection.
+Taproot multisig (`multi_a` / `sortedmulti_a`), multi-input proof-of-reserves,
+PSBT v2, QR / file output, sighash overrides, signing in the browser, wallet
+connection.
 
 ## Descriptor format
+
+### Single-sig
 
 ```
 wpkh([d34db33f/84h/0h/0h]xpub6.../0/0)
@@ -29,6 +33,17 @@ wpkh([d34db33f/84h/0h/0h]xpub6.../0/0)
    |   └────────────────────────────── master fingerprint (8 hex chars)
    └────────────────────────────────── script type
 ```
+
+### Multisig
+
+```
+wsh(sortedmulti(2,[fp1/48h/0h/0h/2h]xpub6.../0/0,[fp2/...]xpub.../0/0,[fp3/...]xpub.../0/0))
+```
+
+Each cosigner key uses the same `[origin]xpub/.../i/j` form as the single-sig
+case. Replace `sortedmulti` with `multi` if you want descriptor-order keys
+(the BIP-67 sort is skipped). M must be in `1..16`, N must be in `1..16`,
+M ≤ N.
 
 An optional `#xxxxxxxx` checksum suffix is accepted but **not validated**.
 
@@ -73,16 +88,18 @@ The Vite build uses `base: './'` so the bundle works at any subpath
 
 ## Regenerating test fixtures
 
-The 24 expected outputs in `test/fixtures.json` come from the Python
-reference. To regenerate them:
+The 24 single-sig fixtures in `test/fixtures.json` and the 18 multisig
+fixtures in `test/ms_fixtures.json` come from the Python reference. To
+regenerate them:
 
 ```
 /path/to/afirmware/venv/bin/python scripts/gen_fixtures.py
+/path/to/afirmware/venv/bin/python scripts/gen_ms_fixtures.py
 ```
 
-The script expects `afirmware/testing/` to live at `../afirmware/testing/`
-relative to this repo. Adjust the `AFW` path in `scripts/gen_fixtures.py` if
-your layout differs.
+The scripts expect `afirmware/testing/` to live at `../afirmware/testing/`
+relative to this repo. Adjust the `AFW` path in each script if your layout
+differs.
 
 ## How it works
 
@@ -100,9 +117,13 @@ and BIP32 derivation info `(fp, path, pubkey)`:
    - vout: one `value=0` `scriptPubKey=0x6a` (bare OP_RETURN)
 4. PSBT v0 globals: `PSBT_GLOBAL_UNSIGNED_TX = to_sign`, `PSBT_GLOBAL_GENERIC_SIGNED_MESSAGE = msg`.
 5. PSBT input map: `PSBT_IN_NON_WITNESS_UTXO = to_spend` (for all address
-   types), `PSBT_IN_REDEEM_SCRIPT` (sh-wpkh only), and either
-   `PSBT_IN_BIP32_DERIVATION` (non-taproot) or
-   `PSBT_IN_TAP_BIP32_DERIVATION` (taproot, with empty leaf-hash list).
+   types). Per-type additions:
+   - `sh(wpkh(...))`: `PSBT_IN_REDEEM_SCRIPT`
+   - `sh(multi(...))`: `PSBT_IN_REDEEM_SCRIPT = multisig redeem script`
+   - `wsh(multi(...))`: `PSBT_IN_WITNESS_SCRIPT = multisig redeem script`
+   - `sh(wsh(multi(...)))`: both — `PSBT_IN_REDEEM_SCRIPT = OP_0 PUSH32 sha256(witnessScript)` and `PSBT_IN_WITNESS_SCRIPT = multisig redeem script`
+   - All non-taproot types: one `PSBT_IN_BIP32_DERIVATION` per cosigner pubkey
+   - Taproot: one `PSBT_IN_TAP_BIP32_DERIVATION` with empty leaf-hash list
 
 The Python reference at `afirmware/testing/bip322.py` is the tiebreaker for
 any byte-level question.

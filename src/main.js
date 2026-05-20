@@ -12,6 +12,8 @@ const els = {
   psbt: $('psbt'),
   network: $('network'),
   type: $('type'),
+  quorum: $('quorum'),
+  quorumWrap: $('quorum-wrap'),
   address: $('address'),
   output: $('output'),
   status: $('status'),
@@ -51,7 +53,13 @@ function build() {
     const r = buildBip322Bundle({ message, descriptor });
     els.psbt.value = r.psbtBase64;
     els.network.textContent = r.network;
-    els.type.textContent = r.type;
+    els.type.textContent = r.type + (r.sorted ? ' (sortedmulti)' : r.m ? ' (multi)' : '');
+    if (r.m && r.n) {
+      els.quorum.textContent = `${r.m} of ${r.n}`;
+      els.quorumWrap.hidden = false;
+    } else {
+      els.quorumWrap.hidden = true;
+    }
     els.address.value = spkToAddress(r.scriptPubKey, r.network) ?? '(unknown)';
     els.output.hidden = false;
     els.status.textContent = '';

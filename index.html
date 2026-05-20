@@ -32,10 +32,14 @@
           placeholder="wpkh([d34db33f/84h/0h/0h]xpub6.../0/0)"
         ></textarea>
         <p class="hint">
-          Supported: <code>pkh(...)</code>, <code>wpkh(...)</code>,
-          <code>sh(wpkh(...))</code>, <code>tr(...)</code>. The key must include origin info
-          and a concrete child index — no <code>/*</code> wildcards. Optional
-          <code>#checksum</code> suffix is accepted (not validated).
+          Single-sig: <code>pkh(...)</code>, <code>wpkh(...)</code>,
+          <code>sh(wpkh(...))</code>, <code>tr(...)</code>.
+          Multisig: <code>sh(multi(...))</code>, <code>wsh(multi(...))</code>,
+          <code>sh(wsh(multi(...)))</code> — and <code>sortedmulti</code> equivalents
+          (BIP-67). Taproot multisig is not supported.
+          Each key must include origin info and a concrete child index — no
+          <code>/*</code> wildcards. Optional <code>#checksum</code> suffix is accepted
+          (not validated).
         </p>
 
         <div class="controls">
@@ -49,6 +53,7 @@
         <div class="meta">
           <span>Network: <strong id="network"></strong></span>
           <span>Type: <strong id="type"></strong></span>
+          <span id="quorum-wrap" hidden>Quorum: <strong id="quorum"></strong></span>
         </div>
 
         <label for="address">Address being proved</label>
