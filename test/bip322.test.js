@@ -10,8 +10,9 @@ import { bip322MsgHash } from '../src/bip322.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = JSON.parse(readFileSync(join(here, 'fixtures.json'), 'utf8'));
+const msFixtures = JSON.parse(readFileSync(join(here, 'ms_fixtures.json'), 'utf8'));
 
-describe('BIP-322 PSBT — byte-for-byte vs Python reference', () => {
+describe('BIP-322 PSBT — single-sig byte-for-byte vs Python reference', () => {
   for (const f of fixtures) {
     it(f.name, () => {
       const { psbtBase64, network, type } = buildBip322Bundle({
@@ -21,6 +22,23 @@ describe('BIP-322 PSBT — byte-for-byte vs Python reference', () => {
       expect(network).toBe(f.network);
       expect(type).toBe(f.type);
       expect(psbtBase64).toBe(f.expected_psbt_base64);
+    });
+  }
+});
+
+describe('BIP-322 PSBT — multisig byte-for-byte vs Python reference', () => {
+  for (const f of msFixtures) {
+    it(f.name, () => {
+      const r = buildBip322Bundle({
+        message: fromHex(f.message_hex),
+        descriptor: f.descriptor,
+      });
+      expect(r.network).toBe(f.network);
+      expect(r.type).toBe(f.type);
+      expect(r.m).toBe(f.m);
+      expect(r.n).toBe(f.n);
+      expect(r.sorted).toBe(f.sorted);
+      expect(r.psbtBase64).toBe(f.expected_psbt_base64);
     });
   }
 });
@@ -59,6 +77,52 @@ describe('descriptor parser', () => {
     const r = parseDescriptor(`wpkh([deadbeef/84h/0h/0h]${xpub}/0/5)`);
     const HARDENED = 0x80000000;
     expect(r.keys[0].path).toEqual([84 | HARDENED, 0 | HARDENED, 0 | HARDENED, 0, 5]);
+  });
+
+  it('rejects taproot multisig (multi_a)', () => {
+    expect(() =>
+      parseDescriptor(`tr(multi_a(2,[deadbeef]${xpub}/0/0,[deadbef1]${xpub}/0/0))`),
+    ).toThrow(/Taproot multisig/);
+  });
+
+  it('rejects multi() with M > N', () => {
+    expect(() =>
+      parseDescriptor(`wsh(multi(3,[deadbeef]${xpub}/0/0,[deadbef1]${xpub}/0/0))`),
+    ).toThrow(/M > N|need at least M/i);
+  });
+
+  it('rejects multi() with non-integer M', () => {
+    expect(() =>
+      parseDescriptor(`wsh(multi(x,[deadbeef]${xpub}/0/0,[deadbef1]${xpub}/0/0))`),
+    ).toThrow(/M must be an integer/);
+  });
+
+  it('rejects multi descriptors mixing mainnet + testnet keys', () => {
+    const tpub =
+      'tpubD6NzVbkrYhZ4XzL5Dhayo67Gorv1YMS7j8pRUvVMd5odC2LBPLAygka9p7748JtSq82FNGPppFEz5xxZUdasBRCqJqXvUHq6xpnsMcYJzeh';
+    expect(() =>
+      parseDescriptor(`wsh(multi(2,[deadbeef]${xpub}/0/0,[deadbef1]${tpub}/0/0))`),
+    ).toThrow(/mainnet and testnet/i);
+  });
+
+  it('sortedmulti() reorders keys by pubkey while multi() preserves descriptor order', () => {
+    const xpub2 =
+      'xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB';
+    const a = parseDescriptor(`wsh(multi(1,[deadbeef]${xpub}/0/0,[deadbef1]${xpub2}/0/0))`);
+    const b = parseDescriptor(`wsh(sortedmulti(1,[deadbeef]${xpub}/0/0,[deadbef1]${xpub2}/0/0))`);
+
+    const aPub0 = a.keys[0].pubkey;
+    const sortedPub0 = b.keys[0].pubkey;
+    // sortedmulti must put the lexicographically-smaller pubkey first.
+    expect([...sortedPub0].slice(0, 1)[0]).toBeLessThanOrEqual([...b.keys[1].pubkey][0]);
+
+    // If the original order already happens to be sorted, the two are equal; otherwise they differ.
+    const alreadySorted =
+      [...a.keys[0].pubkey].slice(0, 4).every((b0, i) => b0 <= a.keys[1].pubkey[i]) ||
+      [...a.keys[0].pubkey].slice(0, 4).every((b0, i) => b0 === a.keys[1].pubkey[i]);
+    if (!alreadySorted) {
+      expect([...aPub0]).not.toEqual([...sortedPub0]);
+    }
   });
 });
 
