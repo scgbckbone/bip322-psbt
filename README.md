@@ -63,8 +63,9 @@ Output (base64 PSBT):
 cHNidP8BAD0AAAAAAUnXZH6/9Ef3a+yDzMgzyWIFbHDGWB1qHFZt250BqcKUAAAAAAD/////AQAAAAAAAAAAAWoAAAAAAQkDUE9SAAEAdAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////IgAgEbX+NXhC9cNo0uOITWpbpXfjvHzeEyAE85uMKkOpzewAAAAAAQAAAAAAAAAAFgAUCyU3p9bzzGaMnp+gMD/7PK1um4EAAAAAIgYDK+NygB2EYN2lKuF4qtd0pUgAulb5Scl7ii9R4pkgnQYMDwVpQwAAAAAAAAAAAAA=
 ```
 
-This output matches Coinkite's Python reference implementation
-(`afirmware/testing/bip322.py`) byte-for-byte.
+This output matches Coinkite's Python implementation in
+`afirmware/testing/bip322.py` byte-for-byte (used as a known-good
+oracle in the test suite).
 
 ## Local development
 
@@ -125,8 +126,9 @@ and BIP32 derivation info `(fp, path, pubkey)`:
    - All non-taproot types: one `PSBT_IN_BIP32_DERIVATION` per cosigner pubkey
    - Taproot: one `PSBT_IN_TAP_BIP32_DERIVATION` with empty leaf-hash list
 
-The Python reference at `afirmware/testing/bip322.py` is the tiebreaker for
-any byte-level question.
+[BIP-322](https://github.com/bitcoin/bips/blob/master/bip-0322.mediawiki) is
+the spec. For byte-level disputes the test suite cross-checks against
+`afirmware/testing/bip322.py` as a known-good Python implementation.
 
 ## License
 
