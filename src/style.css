@@ -166,6 +166,10 @@ button.secondary:hover {
   z-index: 100;
 }
 
+.scan-modal[hidden] {
+  display: none;
+}
+
 .scan-box {
   background: var(--surface);
   border: 1px solid var(--border);
