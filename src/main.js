@@ -107,7 +107,7 @@ function renderQr() {
         els.qr.hidden = true;
         els.qrNote.hidden = false;
         els.qrNote.textContent =
-          'PSBT is too large for a single plain QR code. Larger multisig PSBTs would need BBQr or UR (animated multi-part QR) to fit.';
+          'PSBT is too large for a single QR code — copy the base64 instead.';
       } else {
         els.qr.hidden = false;
         els.qrNote.hidden = true;
