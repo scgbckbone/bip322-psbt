@@ -449,23 +449,32 @@ button.tiny {
   color: var(--text);
 }
 
-footer {
+.bottom-area {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
   margin-top: 3rem;
   padding-top: 1.5rem;
   border-top: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 0.8125rem;
 }
 
-footer a {
-  color: var(--accent);
+.bottom-area .opresearch-logo {
+  display: block;
+  width: 60%;
+  max-width: 18rem;
 }
 
-footer code {
-  font-family: var(--mono);
-  background: var(--surface);
-  padding: 1px 5px;
-  border-radius: 3px;
+.bottom-area .opresearch-logo:hover {
+  opacity: 0.85;
+}
+
+.bottom-area__main-text {
+  fill: #f37324;
+}
+
+.bottom-area__bottom-text {
+  fill: #d1d5db;
 }
 
 @media (max-width: 600px) {
