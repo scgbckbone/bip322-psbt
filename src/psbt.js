@@ -1,10 +1,10 @@
 import { concat, varint } from './util.js';
 
-// Matches the Coinkite test PSBT serializer (afirmware/testing/psbt.py):
-// global UNSIGNED_TX and GENERIC_SIGNED_MESSAGE, separator, one input, one
-// output. The input field order in psbt.py serialize_kvs is:
-//   utxo, witness_utxo, redeem_script, witness_script, ...,
-//   bip32_paths, taproot_bip32_paths, ...
+// BIP-174 PSBT v0 with the BIP-322 PSBT_GLOBAL_GENERIC_SIGNED_MESSAGE
+// global, one input and one output. Input fields are emitted in this
+// order to match the fixture oracle:
+//   non_witness_utxo, witness_utxo, redeem_script, witness_script, ...,
+//   bip32_derivation, tap_bip32_derivation
 
 const PSBT_MAGIC = new Uint8Array([0x70, 0x73, 0x62, 0x74, 0xff]);
 

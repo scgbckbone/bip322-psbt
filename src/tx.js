@@ -1,9 +1,9 @@
 import { concat, i32le, u32le, u64le, varBytes, varint, hash256 } from './util.js';
 
-// Minimal CTransaction matching the Python reference (afirmware/testing/ctransaction.py).
-// Always serialized without the segwit marker/flag, because BIP-322's to_spend/to_sign
-// carry no witness data and the reference's serialize_with_witness() falls back to
-// serialize_without_witness() when wit.is_null() is true.
+// Minimal Bitcoin transaction serializer. Always serialized without the
+// segwit marker/flag: BIP-322's to_spend/to_sign carry no witness data, so
+// the segwit-extended form would be byte-identical to the legacy form
+// anyway, and omitting the 0x00 marker keeps txid hashing simple.
 
 export function txIn(prevTxid32, prevVout, scriptSig, nSequence) {
   // prevTxid32 is internal byte order (the .sha256/.hash field is stored as int but

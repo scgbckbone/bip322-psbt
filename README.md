@@ -63,9 +63,8 @@ Output (base64 PSBT):
 cHNidP8BAD0AAAAAAUnXZH6/9Ef3a+yDzMgzyWIFbHDGWB1qHFZt250BqcKUAAAAAAD/////AQAAAAAAAAAAAWoAAAAAAQkDUE9SAAEAdAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////IgAgEbX+NXhC9cNo0uOITWpbpXfjvHzeEyAE85uMKkOpzewAAAAAAQAAAAAAAAAAFgAUCyU3p9bzzGaMnp+gMD/7PK1um4EAAAAAIgYDK+NygB2EYN2lKuF4qtd0pUgAulb5Scl7ii9R4pkgnQYMDwVpQwAAAAAAAAAAAAA=
 ```
 
-This output matches Coinkite's Python implementation in
-`afirmware/testing/bip322.py` byte-for-byte (used as a known-good
-oracle in the test suite).
+This output is locked down by byte-equality tests against pre-generated
+fixtures (`test/fixtures.json`, `test/ms_fixtures.json`).
 
 ## Local development
 
@@ -90,17 +89,17 @@ The Vite build uses `base: './'` so the bundle works at any subpath
 ## Regenerating test fixtures
 
 The 24 single-sig fixtures in `test/fixtures.json` and the 18 multisig
-fixtures in `test/ms_fixtures.json` come from the Python reference. To
-regenerate them:
+fixtures in `test/ms_fixtures.json` are produced by the helper scripts in
+`scripts/`:
 
 ```
-/path/to/afirmware/venv/bin/python scripts/gen_fixtures.py
-/path/to/afirmware/venv/bin/python scripts/gen_ms_fixtures.py
+python scripts/gen_fixtures.py
+python scripts/gen_ms_fixtures.py
 ```
 
-The scripts expect `afirmware/testing/` to live at `../afirmware/testing/`
-relative to this repo. Adjust the `AFW` path in each script if your layout
-differs.
+The scripts pull in a separate Python BIP-322 implementation as an
+independent oracle; see the top of each script for the expected path and
+adjust it for your layout.
 
 ## How it works
 
@@ -127,8 +126,8 @@ and BIP32 derivation info `(fp, path, pubkey)`:
    - Taproot: one `PSBT_IN_TAP_BIP32_DERIVATION` with empty leaf-hash list
 
 [BIP-322](https://github.com/bitcoin/bips/blob/master/bip-0322.mediawiki) is
-the spec. For byte-level disputes the test suite cross-checks against
-`afirmware/testing/bip322.py` as a known-good Python implementation.
+the spec. For byte-level disputes the test suite cross-checks against an
+independent Python implementation invoked from `scripts/gen_*.py`.
 
 ## License
 

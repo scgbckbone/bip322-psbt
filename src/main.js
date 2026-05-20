@@ -36,9 +36,8 @@ function getFormat() {
   return document.querySelector('input[name="qr-format"]:checked')?.value ?? 'bbqr';
 }
 
-// Mainnet wpkh derived from the Coinkite simulator's known xpub. Same key
-// the test fixtures use, so the resulting PSBT is one anyone with the repo
-// can reproduce locally.
+// Mainnet wpkh keyed off the same xpub the test fixtures use, so the
+// resulting PSBT is one anyone with the repo can reproduce locally.
 const EXAMPLE = {
   message: 'POR',
   descriptor:

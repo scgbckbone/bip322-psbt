@@ -15,9 +15,9 @@ export function bip322MsgHash(msgBytes) {
 // bytes, the base64 form, the script we built (for address display), and
 // metadata about the parsed descriptor.
 //
-// Matches afirmware/testing/bip322.py byte-for-byte:
-//   - bip322_txn (single-sig branch) with default witness_utxo=[]
-//   - bip322_ms_txn for sh/wsh/sh(wsh) multisig
+// Byte-equality with the fixtures in test/ is asserted by the Vitest suite;
+// those fixtures are produced by scripts/gen_*.py using an independent
+// Python BIP-322 implementation.
 export function buildBip322Bundle({ message, descriptor }) {
   const parsed = parseDescriptor(descriptor);
   const msgBytes = typeof message === 'string' ? utf8(message) : message;
