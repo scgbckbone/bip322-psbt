@@ -33,6 +33,10 @@ export function spkToAddress(spk, network) {
   if (spk.length === 22 && spk[0] === 0x00 && spk[1] === 0x14) {
     return bech32.encode(hrp, [0, ...bech32.toWords(spk.slice(2))]);
   }
+  // P2WSH: 0x00 0x20 <32>
+  if (spk.length === 34 && spk[0] === 0x00 && spk[1] === 0x20) {
+    return bech32.encode(hrp, [0, ...bech32.toWords(spk.slice(2))]);
+  }
   // P2TR: 0x51 0x20 <32>
   if (spk.length === 34 && spk[0] === 0x51 && spk[1] === 0x20) {
     return bech32m.encode(hrp, [1, ...bech32m.toWords(spk.slice(2))]);

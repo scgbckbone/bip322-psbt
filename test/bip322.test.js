@@ -52,13 +52,13 @@ describe('descriptor parser', () => {
   it('strips an optional #checksum suffix without validating', () => {
     const a = parseDescriptor(`wpkh([deadbeef]${xpub}/0/0)`);
     const b = parseDescriptor(`wpkh([deadbeef]${xpub}/0/0)#zzzzzzzz`);
-    expect([...a.pubkey]).toEqual([...b.pubkey]);
+    expect([...a.keys[0].pubkey]).toEqual([...b.keys[0].pubkey]);
   });
 
   it('exposes the full master-relative path including origin steps', () => {
     const r = parseDescriptor(`wpkh([deadbeef/84h/0h/0h]${xpub}/0/5)`);
     const HARDENED = 0x80000000;
-    expect(r.path).toEqual([84 | HARDENED, 0 | HARDENED, 0 | HARDENED, 0, 5]);
+    expect(r.keys[0].path).toEqual([84 | HARDENED, 0 | HARDENED, 0 | HARDENED, 0, 5]);
   });
 });
 

@@ -1,5 +1,5 @@
 import { parseDescriptor } from './descriptor.js';
-import { spkFor, redeemShWpkh, taggedHash } from './scripts.js';
+import { buildScripts, taggedHash } from './scripts.js';
 import { encodePath } from './bip32.js';
 import { serializeTx, txIn, txOut, txid } from './tx.js';
 import { buildBip322Psbt } from './psbt.js';
@@ -11,18 +11,20 @@ export function bip322MsgHash(msgBytes) {
   return taggedHash('BIP0322-signed-message', msgBytes);
 }
 
-// Build the BIP-322 "simple"/"full" PSBT for a single-input single-sig descriptor.
-// Matches afirmware/testing/bip322.py byte-for-byte.
+// Build the BIP-322 PSBT for a descriptor + message. Returns the raw PSBT
+// bytes, the base64 form, the script we built (for address display), and
+// metadata about the parsed descriptor.
+//
+// Matches afirmware/testing/bip322.py byte-for-byte:
+//   - bip322_txn (single-sig branch) with default witness_utxo=[]
+//   - bip322_ms_txn for sh/wsh/sh(wsh) multisig
 export function buildBip322Bundle({ message, descriptor }) {
   const parsed = parseDescriptor(descriptor);
   const msgBytes = typeof message === 'string' ? utf8(message) : message;
 
-  const spk = spkFor(parsed.type, parsed.pubkey);
+  const { spk, redeemScript = null, witnessScript = null } = buildScripts(parsed);
   const msgHash = bip322MsgHash(msgBytes);
 
-  // to_spend: nVersion=0, nLockTime=0
-  //   vin[0]: prev_txid=0x00*32, prev_vout=0xffffffff, scriptSig=OP_0 PUSH32(msgHash), nSequence=0
-  //   vout[0]: value=0, scriptPubKey=spk
   const toSpendVin = txIn(
     ZERO_TXID,
     0xffffffff,
@@ -38,9 +40,6 @@ export function buildBip322Bundle({ message, descriptor }) {
   });
   const toSpendTxid = txid(toSpendSerialized);
 
-  // to_sign: nVersion=0, nLockTime=0
-  //   vin[0]: prev = toSpendTxid:0, nSequence=0xffffffff
-  //   vout[0]: value=0, scriptPubKey=OP_RETURN (0x6a)
   const toSignVin = txIn(toSpendTxid, 0, new Uint8Array(0), 0xffffffff);
   const toSignVout = txOut(0n, new Uint8Array([0x6a]));
   const unsignedTx = serializeTx({
@@ -50,16 +49,20 @@ export function buildBip322Bundle({ message, descriptor }) {
     nLockTime: 0,
   });
 
-  const encodedPath = encodePath(parsed.path);
+  const psbtKeys = parsed.keys.map((k) => ({
+    fingerprint: k.fingerprint,
+    encodedPath: encodePath(k.path),
+    pubkey: k.pubkey,
+  }));
+
   const psbt = buildBip322Psbt({
     type: parsed.type,
     unsignedTx,
     toSpendSerialized,
     bip322Msg: msgBytes,
-    fingerprint: parsed.fingerprint,
-    encodedPath,
-    pubkey: parsed.pubkey,
-    redeemScript: parsed.type === 'sh-wpkh' ? redeemShWpkh(parsed.pubkey) : null,
+    redeemScript,
+    witnessScript,
+    keys: psbtKeys,
   });
 
   return {
@@ -69,5 +72,8 @@ export function buildBip322Bundle({ message, descriptor }) {
     type: parsed.type,
     scriptPubKey: spk,
     msgHash,
+    m: parsed.m,
+    n: parsed.n,
+    sorted: parsed.sorted,
   };
 }
