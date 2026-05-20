@@ -96,6 +96,10 @@ function build(auto = true) {
   clearError();
   const message = els.message.value;
   const descriptor = els.descriptor.value.trim();
+  if (!message.trim()) {
+    showError('Message is required.');
+    return;
+  }
   if (!descriptor) {
     showError('Paste an output descriptor.');
     return;
