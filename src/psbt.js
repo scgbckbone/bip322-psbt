@@ -12,6 +12,7 @@ const PSBT_GLOBAL_UNSIGNED_TX = 0x00;
 const PSBT_GLOBAL_GENERIC_SIGNED_MESSAGE = 0x09;
 
 const PSBT_IN_NON_WITNESS_UTXO = 0x00;
+const PSBT_IN_WITNESS_UTXO = 0x01;
 const PSBT_IN_REDEEM_SCRIPT = 0x04;
 const PSBT_IN_WITNESS_SCRIPT = 0x05;
 const PSBT_IN_BIP32_DERIVATION = 0x06;
@@ -26,7 +27,10 @@ function kv(ktype, value, key = new Uint8Array(0)) {
 // Args:
 //   type:               descriptor type, used to choose tap vs regular bip32 derivation
 //   unsignedTx:         serialized to_sign
+//   utxoType:           'witness' (PSBT_IN_WITNESS_UTXO, just the output) or
+//                       'non_witness' (PSBT_IN_NON_WITNESS_UTXO, full to_spend)
 //   toSpendSerialized:  serialized to_spend (goes into NON_WITNESS_UTXO)
+//   toSpendVout0:       serialized to_spend.vout[0] (goes into WITNESS_UTXO)
 //   bip322Msg:          message bytes for PSBT_GLOBAL_GENERIC_SIGNED_MESSAGE
 //   redeemScript:       optional bytes
 //   witnessScript:      optional bytes
@@ -35,7 +39,9 @@ function kv(ktype, value, key = new Uint8Array(0)) {
 export function buildBip322Psbt({
   type,
   unsignedTx,
+  utxoType,
   toSpendSerialized,
+  toSpendVout0,
   bip322Msg,
   redeemScript = null,
   witnessScript = null,
@@ -48,7 +54,11 @@ export function buildBip322Psbt({
   );
 
   const inputParts = [];
-  inputParts.push(kv(PSBT_IN_NON_WITNESS_UTXO, toSpendSerialized));
+  if (utxoType === 'witness') {
+    inputParts.push(kv(PSBT_IN_WITNESS_UTXO, toSpendVout0));
+  } else {
+    inputParts.push(kv(PSBT_IN_NON_WITNESS_UTXO, toSpendSerialized));
+  }
   if (redeemScript) inputParts.push(kv(PSBT_IN_REDEEM_SCRIPT, redeemScript));
   if (witnessScript) inputParts.push(kv(PSBT_IN_WITNESS_SCRIPT, witnessScript));
 

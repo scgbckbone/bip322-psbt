@@ -126,6 +126,40 @@ describe('descriptor parser', () => {
   });
 });
 
+describe('UTXO type override', () => {
+  const xpub =
+    'xpub661MyMwAqRbcGC9DmWbtbAmuUjpMYxw4BWE88NSDHB3jSjfUK7KtYJuKa52GbowD3DVLkgsxH9QwPnTx5mjdHykYFEncnmAsNsCTbWzBhA7';
+
+  it('auto-picks witness for native segwit (wpkh)', () => {
+    const r = buildBip322Bundle({
+      message: 'POR',
+      descriptor: `wpkh([0f056943]${xpub}/0/0)`,
+    });
+    expect(r.utxoType).toBe('witness');
+  });
+
+  it('auto-picks non_witness for legacy (pkh)', () => {
+    const r = buildBip322Bundle({
+      message: 'POR',
+      descriptor: `pkh([0f056943]${xpub}/0/0)`,
+    });
+    expect(r.utxoType).toBe('non_witness');
+  });
+
+  it('honors explicit utxoType override', () => {
+    const wpkhDesc = `wpkh([0f056943]${xpub}/0/0)`;
+    const auto = buildBip322Bundle({ message: 'POR', descriptor: wpkhDesc });
+    const forced = buildBip322Bundle({
+      message: 'POR',
+      descriptor: wpkhDesc,
+      utxoType: 'non_witness',
+    });
+    expect(auto.utxoType).toBe('witness');
+    expect(forced.utxoType).toBe('non_witness');
+    expect(auto.psbtBase64).not.toBe(forced.psbtBase64);
+  });
+});
+
 describe('BIP-322 message hash', () => {
   it('uses BIP-340-style double-tagged hash', () => {
     // tagged_hash("BIP0322-signed-message", b"") computed independently:

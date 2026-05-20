@@ -11,6 +11,20 @@ export function bip322MsgHash(msgBytes) {
   return taggedHash('BIP0322-signed-message', msgBytes);
 }
 
+// BIP-322 step 4 ("PSBT creator") says to set the *appropriate*
+// witness_utxo / non_witness_utxo field. Per BIP-174 convention:
+//   - bare legacy (p2pkh, sh-multi) -> non_witness_utxo
+//   - segwit (native or wrapped)    -> witness_utxo
+export function appropriateUtxoType(type) {
+  switch (type) {
+    case 'pkh':
+    case 'sh-multi':
+      return 'non_witness';
+    default:
+      return 'witness';
+  }
+}
+
 // Build the BIP-322 PSBT for a descriptor + message. Returns the raw PSBT
 // bytes, the base64 form, the script we built (for address display), and
 // metadata about the parsed descriptor.
@@ -18,12 +32,14 @@ export function bip322MsgHash(msgBytes) {
 // Byte-equality with the fixtures in test/ is asserted by the Vitest suite;
 // those fixtures are produced by scripts/gen_*.py using an independent
 // Python BIP-322 implementation.
-export function buildBip322Bundle({ message, descriptor }) {
+export function buildBip322Bundle({ message, descriptor, utxoType }) {
   const parsed = parseDescriptor(descriptor);
   const msgBytes = typeof message === 'string' ? utf8(message) : message;
 
   const { spk, redeemScript = null, witnessScript = null } = buildScripts(parsed);
   const msgHash = bip322MsgHash(msgBytes);
+
+  const effectiveUtxoType = utxoType ?? appropriateUtxoType(parsed.type);
 
   const toSpendVin = txIn(
     ZERO_TXID,
@@ -58,7 +74,9 @@ export function buildBip322Bundle({ message, descriptor }) {
   const psbt = buildBip322Psbt({
     type: parsed.type,
     unsignedTx,
+    utxoType: effectiveUtxoType,
     toSpendSerialized,
+    toSpendVout0: toSpendVout,
     bip322Msg: msgBytes,
     redeemScript,
     witnessScript,
@@ -72,6 +90,7 @@ export function buildBip322Bundle({ message, descriptor }) {
     type: parsed.type,
     scriptPubKey: spk,
     msgHash,
+    utxoType: effectiveUtxoType,
     m: parsed.m,
     n: parsed.n,
     sorted: parsed.sorted,

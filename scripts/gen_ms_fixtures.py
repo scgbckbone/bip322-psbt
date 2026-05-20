@@ -77,6 +77,14 @@ def build_multisig_redeem(M, derived):
     return b"".join(parts)
 
 
+def appropriate_utxo(addr_fmt: str) -> str:
+    """BIP-322 step 4 'appropriate' choice: bare legacy P2SH -> non_witness,
+    segwit (wsh, sh-wsh) -> witness."""
+    if addr_fmt == "sh":
+        return "non_witness"
+    return "witness"
+
+
 def build_psbt(M, cosigners, sub_path, addr_fmt, msg, sorted_):
     derived = make_multisig(M, cosigners, sub_path, sorted_)
     script = build_multisig_redeem(M, derived)
@@ -120,7 +128,10 @@ def build_psbt(M, cosigners, sub_path, addr_fmt, msg, sorted_):
     to_spend.vin = [CTxIn(out_point, scriptSig=b"\x00\x20" + msg_hash)]
     to_spend.vout.append(CTxOut(0, scriptPubKey))
     to_spend.calc_sha256()
-    psbt.inputs[0].utxo = to_spend.serialize_with_witness()
+    if appropriate_utxo(addr_fmt) == "witness":
+        psbt.inputs[0].witness_utxo = to_spend.vout[0].serialize()
+    else:
+        psbt.inputs[0].utxo = to_spend.serialize_with_witness()
 
     # to_sign
     to_sign = CTransaction()

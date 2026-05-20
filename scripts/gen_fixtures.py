@@ -30,9 +30,18 @@ def bip322_msg_hash(msg: bytes) -> bytes:
     return hashlib.sha256(tag_hash + tag_hash + msg).digest()
 
 
+def appropriate_utxo(addr_fmt: str) -> str:
+    """BIP-322 step 4 'appropriate' choice per BIP-174:
+       - bare legacy (p2pkh) -> non_witness_utxo
+       - segwit (native or wrapped) -> witness_utxo"""
+    if addr_fmt == "p2pkh":
+        return "non_witness"
+    return "witness"
+
+
 def build_psbt(master_key: str, sub_path: str, addr_fmt: str, msg: bytes) -> bytes:
-    """Minimal single-input port of bip322_txn(...) from afirmware/testing/bip322.py.
-    Uses witness_utxo=[] (default), psbt_v2=False, one input."""
+    """Single-input BIP-322 PSBT, PSBT v0, with appropriate witness/non-witness
+    utxo for the script type."""
     psbt = BasicPSBT()
     psbt.bip322_msg = msg
 
@@ -86,7 +95,10 @@ def build_psbt(master_key: str, sub_path: str, addr_fmt: str, msg: bytes) -> byt
     to_spend.vout = [CTxOut(0, scr)]
     to_spend.calc_sha256()
 
-    psbt.inputs[0].utxo = to_spend.serialize_with_witness()
+    if appropriate_utxo(addr_fmt) == "witness":
+        psbt.inputs[0].witness_utxo = to_spend.vout[0].serialize()
+    else:
+        psbt.inputs[0].utxo = to_spend.serialize_with_witness()
 
     spendable = CTxIn(COutPoint(to_spend.sha256, 0), nSequence=0xffffffff)
     to_sign.vin.append(spendable)
