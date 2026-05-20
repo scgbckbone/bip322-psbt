@@ -21,7 +21,7 @@
 
     <main>
       <header>
-        <h1>BIP-322 PSBT Creator</h1>
+        <h1><span class="spec">BIP&#8209;322</span> PSBT Creator</h1>
         <p class="lede">
           <a href="https://github.com/bitcoin/bips/blob/master/bip-0322.mediawiki">BIP-322</a>
           generalizes Bitcoin's message-signing standard so any script type — segwit,
@@ -30,11 +30,14 @@
           wallet that can sign a transaction can also sign a message.
         </p>
         <p class="lede">
-          This page is the <strong>PSBT-creator</strong> half of that flow: paste an output
-          descriptor and a message; out comes the unsigned PSBT. Sign it with your hardware
-          wallet, and the signature is a portable proof that you control the address — for
-          proof of reserves, exchange attestations, or any "I'm the owner of this address"
-          claim. Single-sig (pkh, wpkh, sh-wpkh, tr) and non-taproot multisig supported.
+          This page is the
+          <a href="https://github.com/bitcoin/bips/blob/master/bip-0322.mediawiki#psbt-creator"
+            ><strong>PSBT&#8209;creator</strong></a>
+          half of that flow: paste an output descriptor and a message; out comes the
+          unsigned PSBT. Sign it with your hardware wallet, and the signature is a portable
+          proof that you control the address — for proof of reserves, exchange attestations,
+          or any "I'm the owner of this address" claim. Single-sig (pkh, wpkh, sh-wpkh, tr)
+          and non-taproot multisig supported.
         </p>
       </header>
 
