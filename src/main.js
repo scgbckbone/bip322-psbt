@@ -46,9 +46,11 @@ function setUtxoChoice(value) {
 }
 
 // Mainnet wpkh keyed off the same xpub the test fixtures use, so the
-// resulting PSBT is one anyone with the repo can reproduce locally.
+// resulting PSBT is one anyone with the repo can reproduce locally. The
+// message names the very address the descriptor derives, so the example
+// also doubles as a worked check of the 'Address being proved' field.
 const EXAMPLE = {
-  message: 'POR',
+  message: 'I control this address bc1qpvjn0f7k70xxdry7n7srq0lm8jkkaxupfk25ew !!',
   descriptor:
     'wpkh([0f056943]xpub661MyMwAqRbcGC9DmWbtbAmuUjpMYxw4BWE88NSDHB3jSjfUK7KtYJuKa52GbowD3DVLkgsxH9QwPnTx5mjdHykYFEncnmAsNsCTbWzBhA7/0/0)',
 };

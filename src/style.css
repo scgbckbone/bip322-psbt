@@ -254,6 +254,12 @@ button.tiny {
   height: auto;
 }
 
+#qr-info,
+#qr-note {
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
 .qr-note {
   color: var(--error-fg);
 }
