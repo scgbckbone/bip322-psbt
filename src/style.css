@@ -233,6 +233,7 @@ button.tiny {
 
 #qr {
   display: block;
+  margin: 0 auto;
   background: #fff;
   padding: 12px;
   border-radius: 6px;
