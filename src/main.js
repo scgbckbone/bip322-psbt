@@ -399,6 +399,9 @@ els.scanClose.addEventListener('click', closeScan);
 els.scanModal.addEventListener('click', (e) => {
   if (e.target === els.scanModal) closeScan();
 });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !els.scanModal.hidden) closeScan();
+});
 
 els.build.addEventListener('click', () => build(true));
 els.example.addEventListener('click', loadExample);
