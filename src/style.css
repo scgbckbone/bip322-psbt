@@ -42,7 +42,11 @@ header h1 {
 
 header .lede {
   color: var(--muted);
-  margin: 0 0 2rem;
+  margin: 0 0 1rem;
+}
+
+header .lede:last-of-type {
+  margin-bottom: 2rem;
 }
 
 label {

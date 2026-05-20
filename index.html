@@ -7,7 +7,7 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'"
     />
-    <title>BIP-322 PSBT Builder</title>
+    <title>BIP-322 PSBT Creator</title>
     <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body>
@@ -21,10 +21,20 @@
 
     <main>
       <header>
-        <h1>BIP-322 PSBT Builder</h1>
+        <h1>BIP-322 PSBT Creator</h1>
         <p class="lede">
-          Construct an unsigned BIP-322 PSBT for a hardware wallet to sign. Runs entirely in
-          your browser — no keys leave this page, nothing is sent to a server.
+          <a href="https://github.com/bitcoin/bips/blob/master/bip-0322.mediawiki">BIP-322</a>
+          generalizes Bitcoin's message-signing standard so any script type — segwit,
+          taproot, multisig — can sign an arbitrary message, not just legacy 1-addresses.
+          The signed message is wrapped in a pair of virtual transactions, so any hardware
+          wallet that can sign a transaction can also sign a message.
+        </p>
+        <p class="lede">
+          This page is the <strong>PSBT-creator</strong> half of that flow: paste an output
+          descriptor and a message; out comes the unsigned PSBT. Sign it with your hardware
+          wallet, and the signature is a portable proof that you control the address — for
+          proof of reserves, exchange attestations, or any "I'm the owner of this address"
+          claim. Single-sig (pkh, wpkh, sh-wpkh, tr) and non-taproot multisig supported.
         </p>
       </header>
 
@@ -55,7 +65,7 @@
         </p>
 
         <div class="controls">
-          <button id="build" type="button">Build PSBT</button>
+          <button id="build" type="button">Create PSBT</button>
           <button id="example" type="button" class="secondary">Load example</button>
           <span id="status" class="status" role="status" aria-live="polite"></span>
         </div>

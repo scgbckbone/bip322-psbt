@@ -1,4 +1,4 @@
-# BIP-322 PSBT Builder
+# BIP-322 PSBT Creator
 
 A static, browser-only tool that constructs unsigned **BIP-322** PSBTs for
 hardware wallets to sign. Paste a message and an output descriptor, get a

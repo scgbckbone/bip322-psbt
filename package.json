@@ -1,5 +1,5 @@
 {
-  "name": "bip322-psbt-builder",
+  "name": "bip322-psbt-creator",
   "private": true,
   "version": "0.1.0",
   "type": "module",
