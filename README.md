@@ -152,7 +152,7 @@ and BIP32 derivation info per key `(fp, path, pubkey)`:
    - vout: `value = 0`, `scriptPubKey = spk`
 3. **`to_sign`** (the PSBT's unsigned tx):
    - `nVersion = 0`, `nLockTime = 0`
-   - vin: spends `to_spend:0`, `nSequence = 0xffffffff`
+   - vin: spends `to_spend:0`, `nSequence = 0`
    - vout: one `value = 0`, `scriptPubKey = 0x6a` (bare `OP_RETURN`)
 4. PSBT v0 globals:
    - `PSBT_GLOBAL_UNSIGNED_TX = to_sign`

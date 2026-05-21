@@ -136,7 +136,10 @@ def build_psbt(M, cosigners, sub_path, addr_fmt, msg, sorted_):
     # to_sign
     to_sign = CTransaction()
     to_sign.nVersion = 0
-    to_sign.vin.append(CTxIn(COutPoint(to_spend.sha256, 0), nSequence=0xffffffff))
+    # Single-input BIP-322 to_sign: nSequence = 0 (the firmware's single-input
+    # branch, and the BIP-322 spec default). 0xffffffff is only the firmware's
+    # *multi*-input default and must not be copied here.
+    to_sign.vin.append(CTxIn(COutPoint(to_spend.sha256, 0), nSequence=0))
     to_sign.vout.append(CTxOut(0, b"\x6a"))
 
     psbt.txn = to_sign.serialize_with_witness()

@@ -56,7 +56,12 @@ export function buildBip322Bundle({ message, descriptor, utxoType }) {
   });
   const toSpendTxid = txid(toSpendSerialized);
 
-  const toSignVin = txIn(toSpendTxid, 0, new Uint8Array(0), 0xffffffff);
+  // to_sign's single input spends to_spend[0]. BIP-322 fixes its nSequence at
+  // 0 for the simple/default proof; non-zero is reserved for FULL-format
+  // timelocks paired with a matching nVersion. This value is committed in the
+  // sighash, so it must equal what a verifier reconstructs or the signature
+  // won't verify. (Matches the single-input branch of the firmware reference.)
+  const toSignVin = txIn(toSpendTxid, 0, new Uint8Array(0), 0);
   const toSignVout = txOut(0n, new Uint8Array([0x6a]));
   const unsignedTx = serializeTx({
     nVersion: 0,

@@ -100,7 +100,10 @@ def build_psbt(master_key: str, sub_path: str, addr_fmt: str, msg: bytes) -> byt
     else:
         psbt.inputs[0].utxo = to_spend.serialize_with_witness()
 
-    spendable = CTxIn(COutPoint(to_spend.sha256, 0), nSequence=0xffffffff)
+    # Single-input BIP-322 to_sign: nSequence = 0 (the firmware's single-input
+    # branch in bip322.py, and the BIP-322 spec default). 0xffffffff is only the
+    # firmware's *multi*-input default and must not be copied here.
+    spendable = CTxIn(COutPoint(to_spend.sha256, 0), nSequence=0)
     to_sign.vin.append(spendable)
 
     # one OP_RETURN output
