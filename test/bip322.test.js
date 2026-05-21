@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 
 import { buildBip322Bundle } from '../src/bip322.js';
 import { parseDescriptor } from '../src/descriptor.js';
-import { fromHex } from '../src/util.js';
+import { fromHex, hex } from '../src/util.js';
 import { bip322MsgHash } from '../src/bip322.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -146,6 +146,144 @@ describe('descriptor parser', () => {
     if (!alreadySorted) {
       expect([...aPub0]).not.toEqual([...sortedPub0]);
     }
+  });
+});
+
+describe('descriptor parser — bare compressed public keys', () => {
+  // Simulator xpub (master fp 0f056943). Derive concrete compressed pubkeys
+  // from it so the bare-key tests use real, on-curve keys.
+  const simXpub =
+    'xpub661MyMwAqRbcGC9DmWbtbAmuUjpMYxw4BWE88NSDHB3jSjfUK7KtYJuKa52GbowD3DVLkgsxH9QwPnTx5mjdHykYFEncnmAsNsCTbWzBhA7';
+  const xpub2 =
+    'xpub661MyMwAqRbcFW31YEwpkMuc5THy2PSt5bDMsktWQcFF8syAmRUapSCGu8ED9W6oDMSgv6Zz8idoc4a6mr8BDzTJY47LJhkJ8UB7WEGuduB';
+  const pk = hex(parseDescriptor(`wpkh([0f056943]${simXpub}/0/0)`).keys[0].pubkey);
+  const pk2 = hex(parseDescriptor(`wpkh([deadbef1]${xpub2}/0/0)`).keys[0].pubkey);
+
+  it('accepts a bare compressed pubkey with origin info', () => {
+    const r = parseDescriptor(`wpkh([0f056943/84h/0h/0h/0/0]${pk})`);
+    const HARDENED = 0x80000000;
+    expect(r.keys).toHaveLength(1);
+    expect(hex(r.keys[0].pubkey)).toBe(pk);
+    expect(r.keys[0].path).toEqual([84 | HARDENED, 0 | HARDENED, 0 | HARDENED, 0, 0]);
+    expect([...r.keys[0].fingerprint]).toEqual([0x0f, 0x05, 0x69, 0x43]);
+  });
+
+  it('accepts a bare pubkey with origin info omitted (fp = hash160(pubkey)[:4])', () => {
+    const r = parseDescriptor(`wpkh(${pk})`);
+    expect(hex(r.keys[0].pubkey)).toBe(pk);
+    expect(r.keys[0].path).toEqual([]);
+    expect(r.keys[0].fingerprint.length).toBe(4);
+  });
+
+  it('a bare pubkey is byte-for-byte equivalent to the xpub it was derived from', () => {
+    // [0f056943]xpub/0/0 stores fp=0f056943, path=[0,0], pubkey=derived.
+    // [0f056943/0/0]<that pubkey> stores the identical fp, path and pubkey,
+    // so the two must produce an identical PSBT.
+    const fromXpub = buildBip322Bundle({
+      message: 'POR',
+      descriptor: `wpkh([0f056943]${simXpub}/0/0)`,
+    });
+    const fromBare = buildBip322Bundle({
+      message: 'POR',
+      descriptor: `wpkh([0f056943/0/0]${pk})`,
+    });
+    expect(fromBare.psbtBase64).toBe(fromXpub.psbtBase64);
+  });
+
+  it('defaults network to mainnet for a bare-pubkey descriptor', () => {
+    expect(parseDescriptor(`wpkh([0f056943]${pk})`).network).toBe('mainnet');
+  });
+
+  it('accepts bare pubkeys in a multisig descriptor', () => {
+    const r = parseDescriptor(`wsh(sortedmulti(1,[deadbeef]${pk},[deadbef1]${pk2}))`);
+    expect(r.type).toBe('wsh-multi');
+    expect(r.n).toBe(2);
+    expect(r.network).toBe('mainnet');
+    // sortedmulti must order cosigners by pubkey (BIP-67).
+    expect(hex(r.keys[0].pubkey) < hex(r.keys[1].pubkey)).toBe(true);
+  });
+
+  it('allows mixing a bare pubkey and an xpub in multisig (network from the xpub)', () => {
+    const r = parseDescriptor(`wsh(multi(1,[deadbeef]${pk},[deadbef1]${simXpub}/0/0))`);
+    expect(r.network).toBe('mainnet');
+    expect(r.n).toBe(2);
+  });
+
+  it('rejects a child derivation path after a bare pubkey', () => {
+    expect(() => parseDescriptor(`wpkh([0f056943]${pk}/0/0)`)).toThrow(
+      /bare public key cannot have a child/i,
+    );
+  });
+
+  it('rejects an uncompressed public key', () => {
+    const uncompressed = '04' + 'a'.repeat(128);
+    expect(() => parseDescriptor(`wpkh([0f056943]${uncompressed})`)).toThrow(/uncompressed/i);
+  });
+
+  it('rejects an x-only (32-byte) public key outside tr()', () => {
+    const xonly = hex(parseDescriptor(`tr([0f056943]${simXpub}/0/0)`).keys[0].pubkey).slice(2);
+    for (const t of ['wpkh', 'pkh', 'sh(wpkh']) {
+      const close = t === 'sh(wpkh' ? '))' : ')';
+      expect(() => parseDescriptor(`${t}([0f056943]${xonly}${close}`)).toThrow(
+        /x-only.*only allowed inside tr/i,
+      );
+    }
+  });
+
+  it('rejects an x-only key in a multisig descriptor', () => {
+    const xonly = hex(parseDescriptor(`tr([0f056943]${simXpub}/0/0)`).keys[0].pubkey).slice(2);
+    expect(() => parseDescriptor(`wsh(multi(1,[deadbeef]${xonly},[deadbef1]${pk2}))`)).toThrow(
+      /x-only.*only allowed inside tr/i,
+    );
+  });
+});
+
+describe('descriptor parser — x-only public keys in tr()', () => {
+  const simXpub =
+    'xpub661MyMwAqRbcGC9DmWbtbAmuUjpMYxw4BWE88NSDHB3jSjfUK7KtYJuKa52GbowD3DVLkgsxH9QwPnTx5mjdHykYFEncnmAsNsCTbWzBhA7';
+  // x-only key = the derived taproot key with its 1-byte parity prefix dropped.
+  const compressed = hex(parseDescriptor(`tr([0f056943]${simXpub}/0/0)`).keys[0].pubkey);
+  const xonly = compressed.slice(2);
+
+  it('accepts a bare x-only key inside tr() and normalises it to 33 bytes', () => {
+    const r = parseDescriptor(`tr([0f056943/0/0]${xonly})`);
+    expect(r.type).toBe('tr');
+    expect(r.keys[0].pubkey.length).toBe(33);
+    // Normalised with an even (0x02) parity prefix; x-coordinate preserved.
+    expect(hex(r.keys[0].pubkey)).toBe('02' + xonly);
+    expect(r.keys[0].path).toEqual([0, 0]);
+  });
+
+  it('an x-only tr() key yields the same PSBT as the xpub it came from', () => {
+    // Taproot serialises only the x-coordinate, so dropping/re-adding the
+    // parity byte must not change a single byte of the resulting PSBT.
+    const fromXpub = buildBip322Bundle({
+      message: 'POR',
+      descriptor: `tr([0f056943]${simXpub}/0/0)`,
+    });
+    const fromXOnly = buildBip322Bundle({
+      message: 'POR',
+      descriptor: `tr([0f056943/0/0]${xonly})`,
+    });
+    expect(fromXOnly.psbtBase64).toBe(fromXpub.psbtBase64);
+  });
+
+  it('a 33-byte compressed key and its x-only form are equivalent in tr()', () => {
+    const fromCompressed = buildBip322Bundle({
+      message: 'POR',
+      descriptor: `tr([0f056943/0/0]${compressed})`,
+    });
+    const fromXOnly = buildBip322Bundle({
+      message: 'POR',
+      descriptor: `tr([0f056943/0/0]${xonly})`,
+    });
+    expect(fromXOnly.psbtBase64).toBe(fromCompressed.psbtBase64);
+  });
+
+  it('rejects a child path after a bare x-only key', () => {
+    expect(() => parseDescriptor(`tr([0f056943]${xonly}/0/0)`)).toThrow(
+      /bare public key cannot have a child/i,
+    );
   });
 });
 

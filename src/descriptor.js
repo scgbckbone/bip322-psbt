@@ -1,5 +1,5 @@
 import { decodeXpub, derivePath, parsePath } from './bip32.js';
-import { fromHex, hash160 } from './util.js';
+import { concat, fromHex, hash160 } from './util.js';
 
 // Returned shape:
 //   {
@@ -10,6 +10,12 @@ import { fromHex, hash160 } from './util.js';
 //     // multisig-only:
 //     m, n, sorted
 //   }
+//
+// Each key may be an extended key (`[origin]xpub/child`, pubkey derived) or a
+// bare public key (`[origin]<hex>`, used as-is — a raw key cannot be derived,
+// so no child path may follow it). Bare keys are 33-byte compressed (02/03);
+// inside tr() a 32-byte x-only key is also accepted and normalised to 33 bytes
+// (taproot uses only the x-coordinate, so the parity byte is irrelevant).
 //
 // Single-sig descriptors return keys of length 1 and no m/n/sorted.
 // Multisig keys are returned in the order the PSBT must encode them — i.e.
@@ -65,7 +71,7 @@ export function parseDescriptor(input) {
     if (inner.includes(',')) {
       throw new Error('tr() with a script tree is not supported (key-path only).');
     }
-    return finishSingle('tr', parseKeyExpression(inner));
+    return finishSingle('tr', parseKeyExpression(inner, { allowXOnly: true }));
   }
 
   throw new Error(
@@ -76,30 +82,32 @@ export function parseDescriptor(input) {
 function finishSingle(type, key) {
   return {
     type,
-    network: key.xpub.network,
+    // A bare pubkey carries no network; it's valid on any, so default to mainnet.
+    network: key.network ?? 'mainnet',
     keys: [
       {
         fingerprint: key.fingerprint,
-        path: [...key.originSteps, ...key.childSteps],
-        pubkey: derivePath(key.xpub, key.childSteps).pubkey,
+        path: key.path,
+        pubkey: key.pubkey,
       },
     ],
   };
 }
 
 function finishMulti(type, m) {
-  // Derive each cosigner pubkey, then sort by pubkey if sortedmulti.
+  // Keys arrive already resolved to a pubkey; sort by pubkey if sortedmulti.
   const derived = m.keys.map((k) => ({
     fingerprint: k.fingerprint,
-    path: [...k.originSteps, ...k.childSteps],
-    pubkey: derivePath(k.xpub, k.childSteps).pubkey,
-    network: k.xpub.network,
+    path: k.path,
+    pubkey: k.pubkey,
+    network: k.network,
   }));
 
-  // All keys must share a network (mixing main+test in one descriptor would
-  // produce a meaningless address).
-  const networks = new Set(derived.map((d) => d.network));
-  if (networks.size !== 1) {
+  // Extended keys must share a network (mixing main+test in one descriptor
+  // would produce a meaningless address). Bare pubkeys carry no network and
+  // so impose no constraint; if every key is a bare pubkey, default to mainnet.
+  const networks = new Set(derived.map((d) => d.network).filter((n) => n !== null));
+  if (networks.size > 1) {
     throw new Error('Multisig descriptor mixes mainnet and testnet keys.');
   }
 
@@ -109,7 +117,7 @@ function finishMulti(type, m) {
 
   return {
     type,
-    network: [...networks][0],
+    network: networks.size === 1 ? [...networks][0] : 'mainnet',
     m: m.m,
     n: derived.length,
     sorted: m.sorted,
@@ -149,7 +157,7 @@ function parseMultiInner(inner) {
   return { m, sorted, keys };
 }
 
-function parseKeyExpression(expr) {
+function parseKeyExpression(expr, { allowXOnly = false } = {}) {
   let s = expr.trim();
 
   let fingerprint;
@@ -171,26 +179,34 @@ function parseKeyExpression(expr) {
     const originPathStr = originParts.slice(1).join('/');
     originSteps = originPathStr ? parsePath(originPathStr) : [];
   } else {
-    // Origin info omitted. Per BIP-32, fingerprint = hash160(pubkey)[:4].
-    // We compute it from the xpub's own pubkey, which for a master xpub
-    // matches what the explicit [origin] form would carry. For a non-master
-    // xpub it falls back to that xpub's own fingerprint — the best a signer
-    // can do without knowing the true master.
+    // Origin info omitted; fingerprint is computed from the key below.
     rest = s;
-    fingerprint = null; // computed below, after we decode the xpub
+    fingerprint = null;
     originSteps = [];
   }
 
-  let xpubStr;
+  let keyStr;
   let childPathStr = '';
   const slash = rest.indexOf('/');
   if (slash === -1) {
-    xpubStr = rest;
+    keyStr = rest;
   } else {
-    xpubStr = rest.slice(0, slash);
+    keyStr = rest.slice(0, slash);
     childPathStr = rest.slice(slash + 1);
   }
-  if (!xpubStr) throw new Error('Missing xpub in key expression.');
+  if (!keyStr) throw new Error('Missing key in key expression.');
+
+  // A bare key is plain hex; an xpub is base58 and always carries non-hex
+  // letters (x/t/y/u/p/v). So an all-hex key string is a raw public key.
+  if (/^[0-9a-fA-F]+$/.test(keyStr)) {
+    const pubkey = parseRawPubkey(keyStr, allowXOnly);
+    if (childPathStr) {
+      throw new Error('A bare public key cannot have a child derivation path.');
+    }
+    // Per BIP-32, an omitted origin fingerprint is hash160(pubkey)[:4].
+    if (fingerprint === null) fingerprint = hash160(pubkey).slice(0, 4);
+    return { fingerprint, path: originSteps, pubkey, network: null };
+  }
 
   if (childPathStr.includes('*')) {
     throw new Error('Wildcard (*) child paths are not supported. Use a concrete child like /0/0.');
@@ -204,11 +220,43 @@ function parseKeyExpression(expr) {
     }
   }
 
-  const xpub = decodeXpub(xpubStr);
+  const xpub = decodeXpub(keyStr);
+  // Origin info omitted. Per BIP-32, fingerprint = hash160(pubkey)[:4]. We
+  // compute it from the xpub's own pubkey, which for a master xpub matches what
+  // the explicit [origin] form would carry. For a non-master xpub it falls back
+  // to that xpub's own fingerprint — the best a signer can do without the master.
   if (fingerprint === null) {
     fingerprint = hash160(xpub.pubkey).slice(0, 4);
   }
-  return { fingerprint, originSteps, xpub, childSteps };
+  return {
+    fingerprint,
+    path: [...originSteps, ...childSteps],
+    pubkey: derivePath(xpub, childSteps).pubkey,
+    network: xpub.network,
+  };
+}
+
+// Parse a raw public key in hex, returning a 33-byte compressed key. Accepts
+// 33-byte compressed (02/03); inside tr() also accepts a 32-byte x-only key,
+// normalising it to 33 bytes with an even (0x02) parity prefix — taproot
+// derives the output from the x-coordinate alone, so the parity is irrelevant.
+// Rejects uncompressed (04) and anything else with a targeted message.
+function parseRawPubkey(h, allowXOnly) {
+  if (/^04[0-9a-fA-F]{128}$/.test(h)) {
+    throw new Error('Uncompressed public keys are not supported; use a compressed (02/03) key.');
+  }
+  if (/^0[23][0-9a-fA-F]{64}$/.test(h)) {
+    return fromHex(h);
+  }
+  if (/^[0-9a-fA-F]{64}$/.test(h)) {
+    if (!allowXOnly) {
+      throw new Error('x-only (32-byte) public keys are only allowed inside tr().');
+    }
+    return concat(new Uint8Array([0x02]), fromHex(h));
+  }
+  throw new Error(
+    'Public key must be 33-byte compressed hex (02/03 + 64 hex), or a 32-byte x-only key inside tr().',
+  );
 }
 
 function bytewiseCompare(a, b) {

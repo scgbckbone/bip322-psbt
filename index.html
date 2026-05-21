@@ -105,7 +105,10 @@
           (BIP-67). Taproot multisig is not supported.
           Origin info <code>[fp/path]</code> is optional — when omitted the
           fingerprint is computed as <code>hash160(pubkey)[:4]</code> per BIP-32.
-          Child paths after the xpub must be concrete (no <code>/*</code> wildcards).
+          Each key may be an <code>xpub</code> (child paths must be concrete — no
+          <code>/*</code> wildcards) or a bare compressed public key
+          (<code>02/03…</code>, 33 bytes, no child path). Inside <code>tr(...)</code>
+          a 32-byte x-only key is also accepted.
           Optional <code>#checksum</code> suffix is accepted (not validated).
         </p>
 
