@@ -135,7 +135,6 @@ function build(auto = true) {
 function loadExample() {
   els.message.value = EXAMPLE.message;
   els.descriptor.value = EXAMPLE.descriptor;
-  build();
 }
 
 async function copy() {
